@@ -1,4 +1,4 @@
-.PHONY: up install-pressbooks install enable-lti seed seed-books test test-deep-linking test-ags
+.PHONY: up install-pressbooks install enable-lti seed seed-books test test-deep-linking test-ags collect-artifacts
 
 all:
 	make up install-pressbooks install enable-lti seed seed-books test-deep-linking test-ags
@@ -29,4 +29,8 @@ test-deep-linking:
 
 test-ags:
 	bash scripts/ci-test-ags-grade.sh
+
+collect-artifacts:
+	bash scripts/ci-collect-artifacts.sh
+
 
