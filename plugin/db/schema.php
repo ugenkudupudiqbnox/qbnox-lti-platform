@@ -13,6 +13,7 @@ function pb_lti_schema_sql() {
             client_id VARCHAR(255) NOT NULL,
             auth_login_url TEXT NOT NULL,
             jwks_url TEXT NOT NULL,
+            token_url TEXT NOT NULL,
             created_at DATETIME NOT NULL
         ) $charset;",
 
@@ -28,6 +29,13 @@ function pb_lti_schema_sql() {
         CREATE TABLE {$wpdb->prefix}pb_lti_nonces (
             nonce VARCHAR(255) PRIMARY KEY,
             expires_at DATETIME NOT NULL
+        ) $charset;",
+
+        "lineitems" => "
+        CREATE TABLE {$wpdb->prefix}pb_lti_lineitems (
+            id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            context_id VARCHAR(255) NOT NULL,
+            lineitem_url TEXT NOT NULL
         ) $charset;"
     ];
 }
