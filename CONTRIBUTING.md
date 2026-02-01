@@ -12,4 +12,4 @@
 
 ## Reporting Security Issues
 Do NOT open public issues.
-Email: security@yourdomain.example
+Email: ugen@qbnox.com
