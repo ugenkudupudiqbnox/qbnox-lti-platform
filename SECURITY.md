@@ -7,7 +7,7 @@ The latest released version is actively supported with security fixes.
 Please **do not open public issues** for security concerns.
 
 Instead, report vulnerabilities privately via:
-- Email: security@yourdomain.example
+- Email: ugen@qbnox.com
 
 We aim to acknowledge reports within **72 hours**.
 
