@@ -1,20 +1,21 @@
 <?php
 defined('ABSPATH') || exit;
 
-add_action('network_admin_menu', function () {
-    add_menu_page('LTI Platforms','LTI Platforms','manage_network','pb-lti-platforms','pb_lti_platforms');
-    add_submenu_page('pb-lti-platforms','Deployments','Deployments','manage_network','pb-lti-deployments','pb_lti_deployments');
-    add_submenu_page('pb-lti-platforms','Line Items','Line Items','manage_network','pb-lti-lineitems','pb_lti_lineitems');
+add_action('network_admin_menu', function(){
+  add_menu_page('LTI Audit','LTI Audit','manage_network','pb-lti-audit','pb_lti_audit_page');
+  add_menu_page('LTI Scopes','LTI Scopes','manage_network','pb-lti-scopes','pb_lti_scopes_page');
 });
 
-function pb_lti_platforms() {
-    echo '<h1>LTI Platforms</h1><p>Platform registry managed here.</p>';
+function pb_lti_audit_page() {
+  global $wpdb;
+  $rows = $wpdb->get_results("SELECT * FROM {$wpdb->prefix}pb_lti_audit ORDER BY id DESC LIMIT 100");
+  echo '<h1>LTI Audit Log</h1><table><tr><th>Event</th><th>Context</th><th>Time</th></tr>';
+  foreach ($rows as $r) {
+    echo "<tr><td>{$r->event}</td><td>{$r->context}</td><td>{$r->created_at}</td></tr>";
+  }
+  echo '</table>';
 }
 
-function pb_lti_deployments() {
-    echo '<h1>LTI Deployments</h1><p>Deployment IDs registry.</p>';
-}
-
-function pb_lti_lineitems() {
-    echo '<h1>LTI Line Items</h1><p>Stored AGS line items.</p>';
+function pb_lti_scopes_page() {
+  echo '<h1>AGS Scopes</h1><p>Scopes enforced per LineItem (future UI hooks).</p>';
 }
