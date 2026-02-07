@@ -22,6 +22,16 @@ class LaunchController {
 
         NonceService::consume($claims->nonce);
 
+        // Check message type - handle Deep Linking requests differently
+        $message_type = $claims->{'https://purl.imsglobal.org/spec/lti/claim/message_type'} ?? 'LtiResourceLinkRequest';
+
+        if ($message_type === 'LtiDeepLinkingRequest') {
+            // This is a Deep Linking request - forward to DeepLinkController
+            error_log('[PB-LTI] Deep Linking request detected, showing content picker');
+            return DeepLinkController::handle_deep_linking_launch($claims);
+        }
+
+        // Regular LTI launch - login user and redirect
         $user_id = RoleMapper::login_user($claims);
 
         // Get target link URI from claims

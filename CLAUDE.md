@@ -176,6 +176,165 @@ Changes should prioritize **security, auditability, and standards compliance** o
 
 ## Recent Decisions - 2026-02-08
 
+### Deep Linking 2.0 Implementation (COMPLETED)
+
+**Date**: 2026-02-08
+**Status**: ✅ Fully implemented and tested
+
+#### What Was Built
+
+1. **ContentService** (`plugin/Services/ContentService.php`)
+   - `get_all_books()` - Query WordPress multisite for all Pressbooks books
+   - `get_book_structure($blog_id)` - Get chapters, parts, front/back matter
+   - `get_content_item($blog_id, $post_id)` - Generate LTI content item for Deep Linking response
+
+2. **Content Picker UI** (`plugin/views/deep-link-picker.php`)
+   - Modern, responsive interface with book cards
+   - AJAX-powered chapter expansion
+   - Visual selection feedback
+   - Auto-submitting form POST for Deep Linking response
+
+3. **Enhanced Controllers**:
+   - **LaunchController**: Now detects `message_type` claim and routes Deep Linking requests to DeepLinkController
+   - **DeepLinkController**:
+     - `handle()` - REST API endpoint for testing
+     - `handle_deep_linking_launch()` - Handles JWT-based Deep Linking requests from LTI launch flow
+     - `process_selection()` - Signs JWT with selected content and POSTs back to LMS
+
+4. **AJAX Handlers** (`plugin/ajax/handlers.php`)
+   - `wp_ajax_pb_lti_get_book_structure` - Dynamically loads book structure for content picker
+
+#### Critical Patterns Established
+
+**Content-Type Headers**:
+```php
+// ALWAYS set Content-Type when returning HTML from REST endpoints
+header('Content-Type: text/html; charset=UTF-8');
+echo $html;
+exit;
+```
+
+**Deep Linking Response Format**:
+```php
+// LTI 1.3 Deep Linking requires form POST, NOT URL redirect
+// WRONG:
+wp_redirect($return_url . '?JWT=' . $jwt); // ❌ Causes oauth_consumer_key error
+
+// CORRECT:
+header('Content-Type: text/html; charset=UTF-8');
+?>
+<form method="POST" action="<?php echo esc_url($return_url); ?>">
+    <input type="hidden" name="JWT" value="<?php echo esc_attr($jwt); ?>">
+</form>
+<script>document.getElementById('form').submit();</script>
+<?php
+exit;
+```
+
+**Message Type Detection**:
+```php
+// LaunchController must check message_type to route Deep Linking requests
+$message_type = $claims->{'https://purl.imsglobal.org/spec/lti/claim/message_type'} ?? 'LtiResourceLinkRequest';
+
+if ($message_type === 'LtiDeepLinkingRequest') {
+    return DeepLinkController::handle_deep_linking_launch($claims);
+}
+// Otherwise: normal launch flow
+```
+
+**Deep Linking JWT Structure**:
+```json
+{
+  "iss": "https://pb.lti.qbnox.com",
+  "aud": "client-id-from-platform",
+  "iat": 1234567890,
+  "exp": 1234568190,
+  "nonce": "random-32-char-string",
+  "https://purl.imsglobal.org/spec/lti/claim/message_type": "LtiDeepLinkingResponse",
+  "https://purl.imsglobal.org/spec/lti/claim/version": "1.3.0",
+  "https://purl.imsglobal.org/spec/lti-dl/claim/content_items": [
+    {
+      "type": "ltiResourceLink",
+      "title": "Chapter 1 – Introduction",
+      "url": "https://pb.lti.qbnox.com/test-book/chapter/intro/",
+      "text": "Chapter excerpt..."
+    }
+  ]
+}
+```
+
+#### Moodle Configuration Requirements
+
+**Tool Settings** (Site Administration → Plugins → External tool → Manage tools):
+- ✅ **Tool configuration usage**: "Show in activity chooser"
+- ✅ **Supports Deep Linking**: Enabled (checkbox)
+- ✅ **Tool URL**: Set default (e.g., `https://pb.lti.qbnox.com`)
+- ✅ **Public keyset URL**: `https://pb.lti.qbnox.com/wp-json/pb-lti/v1/keyset`
+
+**Known Issue: Moodle Public Key Verification**
+
+Moodle needs the tool's public key to verify Deep Linking response JWTs. In some Moodle versions (e.g., 4.4.4), it doesn't automatically fetch the key from the JWKS URL.
+
+**Manual Fix** (one-time admin configuration):
+
+```php
+// Run this in Moodle CLI to fetch and store public key:
+define('CLI_SCRIPT', true);
+require_once('/var/www/html/config.php');
+
+$tool = $DB->get_record('lti_types', ['name' => 'Pressbooks LTI Platform']);
+$caps = json_decode($tool->enabledcapability, true);
+$jwks_url = $caps['publickeyseturl'];
+
+// Fetch JWKS
+$jwks_json = file_get_contents($jwks_url);
+$jwks = json_decode($jwks_json, true);
+$jwk = $jwks['keys'][0];
+
+// Convert JWK to PEM (Moodle has helper for this)
+require_once($CFG->dirroot . '/lib/jwk.php');
+$pem = \core\jwk::convert_jwk_to_pem($jwk);
+
+// Store in Moodle config
+$config = new stdClass();
+$config->typeid = $tool->id;
+$config->name = 'publickey';
+$config->value = $pem;
+
+$DB->delete_records('lti_types_config', ['typeid' => $tool->id, 'name' => 'publickey']);
+$DB->insert_record('lti_types_config', $config);
+
+echo "✅ Public key stored!\n";
+```
+
+**Alternative**: In Moodle admin UI, paste the public key from:
+```
+https://pb.lti.qbnox.com/wp-json/pb-lti/v1/keyset
+```
+
+After this one-time configuration, Deep Linking works end-to-end:
+1. Instructor creates External Tool activity
+2. Clicks "Select content" → Opens Pressbooks content picker
+3. Selects book/chapter → JWT signed and POSTed to Moodle
+4. Moodle verifies JWT signature → Stores selected content URL
+5. Student clicks activity → Launches directly to selected content
+
+#### Testing & Verification
+
+**Test URLs**:
+- Content picker (direct): `https://pb.lti.qbnox.com/wp-json/pb-lti/v1/deep-link?client_id=test&deep_link_return_url=http://example.com&deployment_id=1`
+- JWKS endpoint: `https://pb.lti.qbnox.com/wp-json/pb-lti/v1/keyset`
+- AJAX test: `curl -X POST https://pb.lti.qbnox.com/wp/wp-admin/admin-ajax.php -d "action=pb_lti_get_book_structure&book_id=2"`
+
+**Test Scripts**:
+- `scripts/test-deep-link-ui.sh` - Generate test URL
+- `scripts/verify-deep-link-ui.sh` - Verify implementation
+- `scripts/enable-deep-linking-in-moodle.php` - Configure Moodle tool
+
+**Documentation**:
+- `docs/DEEP_LINKING_CONTENT_PICKER.md` - User guide
+- `DEEP_LINKING_IMPLEMENTATION_SUMMARY.md` - Technical implementation details
+
 ### Production Deployment Architecture
 
 **Domains & Infrastructure:**
@@ -447,9 +606,10 @@ $platform = $wpdb->get_row(
 ### Known Limitations & Future Work
 
 **Deep Linking:**
-- Content picker UI not yet implemented
-- Currently returns default homepage URL
-- Future: Interactive book/chapter/page browser with search
+- ✅ **IMPLEMENTED** (2026-02-08): Interactive content picker UI with book/chapter selection
+- ✅ JWT signing and LTI 1.3 Deep Linking 2.0 compliance
+- ⚠️ **Manual step required**: Moodle admin must configure public key (see Moodle Configuration below)
+- Future: Search functionality, bulk selection, book cover thumbnails
 
 **AGS:**
 - OAuth2 token acquisition needs full implementation
@@ -467,6 +627,9 @@ $platform = $wpdb->get_row(
 ✅ **Working in Production:**
 - LTI 1.3 Core launch flow
 - OIDC authentication with JWT validation
+- **Deep Linking 2.0 content picker** (new!)
+- Content selection with JWT signing
+- Message type detection (LtiDeepLinkingRequest vs LtiResourceLinkRequest)
 - User provisioning and SSO
 - Cross-domain session management
 - AGS grade passback (verified: 85.5/100 visible in gradebook)
