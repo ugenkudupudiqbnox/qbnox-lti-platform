@@ -2,7 +2,10 @@
 #!/usr/bin/env bash
 set -e
 
-PB_URL=${PRESSBOOKS_URL:-https://pressbooks.local}
+# Load environment configuration
+source "$(dirname "$0")/load-env.sh"
+
+PB_URL=${PRESSBOOKS_URL}
 RETURN_URL="https://example.com/deep-link-return"
 
 RESPONSE=$(curl -sk -X POST "$PB_URL/wp-json/pb-lti/v1/deep-link"   -d "deep_link_return_url=$RETURN_URL"   -d "client_id=ci-test-client")

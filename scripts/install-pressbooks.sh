@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -e
 
+# Load environment configuration
+source "$(dirname "$0")/load-env.sh"
+
 PB_CONTAINER=$(docker ps --filter "name=pressbooks" --format "{{.ID}}")
 
 if [ -z "$PB_CONTAINER" ]; then
@@ -23,8 +26,8 @@ done
 # Install multisite if not already installed
 if ! wp site list --allow-root >/dev/null 2>&1; then
   wp core multisite-install \
-    --url='https://pressbooks.local' \
-    --title='Pressbooks Local' \
+    --url=\"${PRESSBOOKS_URL}\" \
+    --title='Pressbooks LTI Platform' \
     --admin_user=admin \
     --admin_password=admin123 \
     --admin_email=admin@example.com \

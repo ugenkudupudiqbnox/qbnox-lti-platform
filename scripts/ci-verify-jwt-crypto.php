@@ -3,7 +3,7 @@
 // Full JWT signature verification using JWKS + OpenSSL
 
 $jwt = $argv[1] ?? null;
-$jwksUrl = getenv('JWKS_URL') ?: 'https://pressbooks.local/wp-json/pb-lti/v1/keyset';
+$jwksUrl = getenv('JWKS_URL') ?: (getenv('PRESSBOOKS_URL') ?: 'https://pressbooks.local') . '/wp-json/pb-lti/v1/keyset';
 
 if (!$jwt) {
     fwrite(STDERR, "JWT missing\n");

@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -e
 
-PRESSBOOKS_URL=${PRESSBOOKS_URL:-https://pressbooks.local}
+# Load environment configuration
+source "$(dirname "$0")/load-env.sh"
 
 echo "🔗 Testing Deep Linking response"
 

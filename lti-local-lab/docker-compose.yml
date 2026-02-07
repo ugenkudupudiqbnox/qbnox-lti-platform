@@ -3,59 +3,73 @@ version: "3.9"
 networks:
   lti-net:
 
+volumes:
+  mysql-data:
+  moodle-data:
+  moodledata:
+  pressbooks-data:
+
 services:
   mysql:
     image: mysql:8.0
     environment:
       MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: moodle
+    volumes:
+      - mysql-data:/var/lib/mysql
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-proot"]
       interval: 5s
       timeout: 5s
       retries: 20
+    networks:
+      - lti-net
 
   moodle:
-    image: bitnami/moodle:5.1
+    image: php:8.1-apache
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      MYSQL_HOST: mysql
+      MYSQL_DATABASE: moodle
+      MYSQL_USER: root
+      MYSQL_PASSWORD: root
+    volumes:
+      - moodle-data:/var/www/html
+      - moodledata:/var/moodledata
+    ports:
+      - "8080:80"
+    networks:
+      - lti-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 60s
+
+  pressbooks:
+    image: wordpress:6.8-php8.2-apache
     depends_on:
       mysql:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/login/index.php"]
+      test: ["CMD", "curl", "-f", "http://localhost/"]
       interval: 10s
       timeout: 5s
       retries: 20
+      start_period: 40s
+    container_name: pressbooks
     environment:
-      MOODLE_DATABASE_HOST: mysql
-      MOODLE_DATABASE_USER: root
-      MOODLE_DATABASE_PASSWORD: root
-      MOODLE_DATABASE_NAME: moodle
-      MOODLE_SITE_NAME: "Moodle Local"
+      WORDPRESS_DB_HOST: mysql
+      WORDPRESS_DB_USER: root
+      WORDPRESS_DB_PASSWORD: root
+      WORDPRESS_DB_NAME: pressbooks
+      WORDPRESS_DEBUG: 1
+    volumes:
+      - pressbooks-data:/var/www/html
     ports:
-      - "8080:8080"
-    networks: [lti-net]
-
-pressbooks:
-  image: wordpress:6.4-php8.1-apache
-  depends_on:
-    mysql:
-      condition: service_healthy
-  healthcheck:
-    test: ["CMD", "curl", "-f", "http://localhost/wp-login.php"]
-    interval: 10s
-    timeout: 5s
-    retries: 20
-  container_name: pressbooks
-  environment:
-    WORDPRESS_DB_HOST: mysql
-    WORDPRESS_DB_USER: root
-    WORDPRESS_DB_PASSWORD: root
-    WORDPRESS_DB_NAME: pressbooks
-    WORDPRESS_DEBUG: 1
-  volumes:
-    - ./pressbooks:/var/www/html
-  ports:
-    - "8081:80"
-  depends_on:
-    - mysql
-  networks:
-    - lti-net
+      - "8081:80"
+    networks:
+      - lti-net
