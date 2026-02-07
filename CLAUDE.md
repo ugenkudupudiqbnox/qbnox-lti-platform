@@ -459,6 +459,117 @@ curl -sI https://pb.lti.qbnox.com/test-book/wp-login.php | grep "HTTP/1.1"
 # Expected: HTTP/1.1 200 OK
 ```
 
+#### 6. Deep Linking JWT Claims (CRITICAL FIX - 2026-02-08 Evening)
+**Problem:** Moodle rejecting Deep Linking response JWTs with "Consumer key is incorrect" error
+**Root Cause:** Incorrect JWT `iss` (issuer) and `aud` (audience) claims in tool-to-platform messages
+**Impact:** Deep Linking content selection completely broken - instructors unable to select specific books/chapters
+
+**The Bug:**
+```php
+// WRONG - Was sending Pressbooks URL as issuer
+$jwt_payload = [
+    'iss' => home_url(),  // ❌ https://pb.lti.qbnox.com
+    'aud' => $client_id,  // ❌ Should be platform issuer
+];
+```
+
+**Why It Failed:**
+Moodle's `lti_convert_from_jwt()` function extracts the `iss` claim and passes it to `lti_verify_jwt_signature()` as the `$consumerkey` parameter. The verification function then checks:
+```php
+$key = $tool->clientid;  // e.g., "pb-lti-ce86a36fa1e79212536130fe7b6e8292"
+if ($consumerkey !== $key) {
+    throw new moodle_exception('errorincorrectconsumerkey', 'mod_lti');
+}
+```
+
+So Moodle was comparing:
+- `$consumerkey` (from JWT iss): `https://pb.lti.qbnox.com`
+- `$key` (tool clientid): `pb-lti-ce86a36fa1e79212536130fe7b6e8292`
+- Result: ❌ Mismatch → Error
+
+**The Fix:**
+```php
+// CORRECT - Use client_id as issuer, platform issuer as audience
+// Look up platform issuer from database
+$platform = $wpdb->get_row($wpdb->prepare(
+    "SELECT issuer FROM {$wpdb->prefix}lti_platforms WHERE client_id = %s",
+    $client_id
+));
+
+$jwt_payload = [
+    'iss' => $client_id,           // ✅ Tool's identifier in platform (client_id)
+    'aud' => $platform->issuer,    // ✅ Platform's issuer URL
+];
+```
+
+**LTI 1.3 Specification Clarification:**
+For **tool-to-platform** messages (like Deep Linking Response):
+- `iss`: The tool's unique identifier **as known to the platform** (which is the `client_id`)
+- `aud`: The platform's issuer URL (e.g., `https://moodle.lti.qbnox.com`)
+
+This differs from **platform-to-tool** messages (like LTI Launch):
+- `iss`: The platform's issuer URL
+- `aud`: The tool's client_id
+
+**Debugging Pattern Established:**
+When encountering JWT verification errors:
+1. Add logging to both sender (Pressbooks) and receiver (Moodle) sides
+2. Log the actual JWT claims being sent: `error_log('[PB-LTI] JWT Claims: iss=' . $iss . ', aud=' . $aud)`
+3. Log the expected values on receiver side: `error_log('[MOODLE] Expecting iss=' . $tool->clientid)`
+4. Compare what's sent vs. what's expected
+5. Check the LTI spec for message direction (tool→platform vs platform→tool)
+
+**Docker Container vs Host Files (CRITICAL LESSON):**
+When using Docker volumes with mounted directories:
+- Changes to files on HOST (`/root/pressbooks-lti-platform/plugin/`) do NOT automatically appear in container
+- The container may have its own copy of the files (depending on volume mount configuration)
+- **Always verify changes inside the container** after editing:
+  ```bash
+  docker exec pressbooks cat /var/www/html/web/app/plugins/pressbooks-lti-platform/Controllers/DeepLinkController.php | grep "'iss' =>"
+  ```
+- For immediate fixes, edit directly in container using `docker exec`:
+  ```bash
+  docker exec pressbooks sed -i "s/old/new/g" /path/to/file.php
+  ```
+
+**Moodle Configuration for Deep Linking:**
+Essential settings in `lti_types_config` table:
+1. ✅ `keytype: JWK_KEYSET` - Dynamically fetch public key from JWKS endpoint
+2. ✅ `publickeyset: https://pb.lti.qbnox.com/wp-json/pb-lti/v1/keyset` - JWKS URL
+3. ✅ `contentitem: 1` - Enable Deep Linking support
+4. ✅ `toolurl_ContentItemSelectionRequest: https://pb.lti.qbnox.com/wp-json/pb-lti/v1/deep-link` - Content selection URL
+5. ✅ `redirectionuris` - Must include BOTH:
+   - `https://pb.lti.qbnox.com/wp-json/pb-lti/v1/launch`
+   - `https://pb.lti.qbnox.com/wp-json/pb-lti/v1/deep-link`
+
+**Moodle Tool URL Configuration:**
+- Moodle's `lti_get_type_config()` uses `UNION ALL` to merge config from two sources:
+  - Config from `lti_types_config` table
+  - **Automatically adds** `toolurl` from `baseurl` field in `lti_types` table
+- ❌ **Do NOT** create a `toolurl` entry in `lti_types_config` (causes duplicates)
+- ✅ **Set** the `baseurl` field in `lti_types` table instead
+- This prevents "Duplicate value 'toolurl' found in column 'name'" debugging warning
+
+**Public Key Management (JWKS vs Stored Key):**
+According to LTI 1.3 spec, platforms SHOULD dynamically fetch public keys from JWKS endpoint:
+- ✅ **Preferred**: `keytype: JWK_KEYSET` with `publickeyset` URL
+- ❌ **Avoid**: Storing public key in `lti_types_config` (defeats key rotation)
+- If both are present, delete the stored `publickey` to force JWKS usage:
+  ```php
+  $DB->delete_records('lti_types_config', ['typeid' => $tool->id, 'name' => 'publickey']);
+  ```
+
+**Status: ✅ RESOLVED**
+- Deep Linking content selection: **WORKING**
+- JWT signature verification: **WORKING**
+- Content items persist in Moodle: **WORKING**
+- Students launch to selected content: **WORKING**
+
+**Files Modified:**
+- `plugin/Controllers/DeepLinkController.php` - Fixed JWT claims in `process_selection()` method
+
+**Commit:** `7ee40d7` - "fix: correct JWT issuer and audience claims for Deep Linking response"
+
 ### Deep Linking 2.0 Implementation
 
 **Architecture Decision:** Deep Linking is instructor-facing content selection, not student launch
@@ -466,19 +577,32 @@ curl -sI https://pb.lti.qbnox.com/test-book/wp-login.php | grep "HTTP/1.1"
 
 **DeepLinkController Pattern:**
 ```php
-// 1. Fetch private RSA key from database (never hardcode)
+// 1. Look up platform issuer from client_id
+$platform = $wpdb->get_row($wpdb->prepare(
+    "SELECT issuer FROM {$wpdb->prefix}lti_platforms WHERE client_id = %s",
+    $client_id
+));
+
+// 2. Fetch private RSA key from database (never hardcode)
 $key_row = $wpdb->get_row("SELECT * FROM {$wpdb->prefix}lti_keys WHERE kid = 'pb-lti-2024'");
 
-// 2. Sign JWT with RS256 using private key
+// 3. Sign JWT with RS256 using CORRECT claims for tool→platform messages
 $jwt = JWT::encode([
-    'iss' => home_url(),
-    'aud' => $request->get_param('client_id'),
+    'iss' => $client_id,           // Tool's identifier (client_id from platform)
+    'aud' => $platform->issuer,    // Platform's issuer URL
     'nonce' => wp_generate_password(32, false),
     'https://purl.imsglobal.org/spec/lti-dl/claim/content_items' => [...]
 ], $key_row->private_key, 'RS256', 'pb-lti-2024');
 
-// 3. Redirect back to Moodle with signed JWT
-wp_redirect($return_url . '?JWT=' . urlencode($jwt));
+// 4. Return via POST (NOT GET redirect) - LTI 1.3 requirement
+header('Content-Type: text/html; charset=UTF-8');
+?>
+<form method="POST" action="<?php echo esc_url($return_url); ?>">
+    <input type="hidden" name="JWT" value="<?php echo esc_attr($jwt); ?>">
+</form>
+<script>document.querySelector('form').submit();</script>
+<?php
+exit;
 ```
 
 **Moodle Configuration Requirements:**
