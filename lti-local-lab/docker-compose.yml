@@ -75,6 +75,7 @@ services:
       PHP_MAX_INPUT_TIME: 600
     volumes:
       - pressbooks-data:/var/www/html
+      - ./php-config/php-custom.ini:/usr/local/etc/php/conf.d/php-custom.ini:ro
     ports:
       - "8081:80"
     networks:
