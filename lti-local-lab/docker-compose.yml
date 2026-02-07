@@ -76,6 +76,7 @@ services:
     volumes:
       - pressbooks-data:/var/www/html
       - ./php-config/php-custom.ini:/usr/local/etc/php/conf.d/php-custom.ini:ro
+      - ./apache-config/000-default.conf:/etc/apache2/sites-available/000-default.conf:ro
     ports:
       - "8081:80"
     networks:
