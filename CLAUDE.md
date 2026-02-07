@@ -404,6 +404,54 @@ wp_redirect($target_link_uri);
 exit;
 ```
 
+#### 5. Bedrock Multisite .htaccess (Subsite Admin Redirect Loop)
+**Problem:** Accessing subsite wp-admin (e.g., `/test-book/wp-admin/`) causes infinite redirect loop
+**Solution:** Update `.htaccess` with Bedrock multisite-specific rewrite rules
+**Pattern:** Bedrock places WordPress core in `/web/wp/`, so subsite paths must be rewritten to map to core
+
+**Root Cause:** In Bedrock with subdirectory multisite:
+- WordPress core is at `/var/www/html/web/wp/`
+- Subsite paths like `/test-book/wp-admin/` need rewriting to `/wp/wp-admin/`
+- Standard WordPress .htaccess doesn't include these Bedrock-specific rewrites
+
+**Fix:** Update `/var/www/html/web/.htaccess` with these rules:
+
+```apache
+# BEGIN WordPress Multisite
+<IfModule mod_rewrite.c>
+RewriteEngine On
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+RewriteBase /
+RewriteRule ^index\.php$ - [L]
+
+# add a trailing slash to /wp-admin
+RewriteRule ^([_0-9a-zA-Z-]+/)?wp-admin$ $1wp-admin/ [R=301,L]
+
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+RewriteRule ^([_0-9a-zA-Z-]+/)?(wp-(content|admin|includes).*) wp/$2 [L]
+RewriteRule ^([_0-9a-zA-Z-]+/)?(.*\.php)$ wp/$2 [L]
+RewriteRule . index.php [L]
+</IfModule>
+# END WordPress Multisite
+```
+
+**Critical Rules:**
+- `RewriteRule ^([_0-9a-zA-Z-]+/)?(wp-(content|admin|includes).*) wp/$2 [L]` - Maps `/test-book/wp-admin/` to `/wp/wp-admin/`
+- `RewriteRule ^([_0-9a-zA-Z-]+/)?(.*\.php)$ wp/$2 [L]` - Maps `/test-book/wp-login.php` to `/wp/wp-login.php`
+
+**Verification:**
+```bash
+# Should redirect to login page (not loop):
+curl -sI https://pb.lti.qbnox.com/test-book/wp-admin/ | grep Location
+# Expected: Location: https://pb.lti.qbnox.com/test-book/wp-login.php?redirect_to=...
+
+# Should return 200 OK:
+curl -sI https://pb.lti.qbnox.com/test-book/wp-login.php | grep "HTTP/1.1"
+# Expected: HTTP/1.1 200 OK
+```
+
 ### Deep Linking 2.0 Implementation
 
 **Architecture Decision:** Deep Linking is instructor-facing content selection, not student launch
