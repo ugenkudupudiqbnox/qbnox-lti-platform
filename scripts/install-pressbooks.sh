@@ -91,6 +91,13 @@ else
   echo '⚠️  .env file not found, skipping WP_ENV configuration'
 fi
 
+# Fix file permissions for WordPress/Bedrock
+echo '🔧 Setting correct file permissions...'
+chown -R www-data:www-data /var/www/html/web/app/
+find /var/www/html/web/app -type d -exec chmod 755 {} \\;
+find /var/www/html/web/app -type f -exec chmod 644 {} \\;
+echo '✅ File permissions set correctly'
+
 echo '✅ Pressbooks installed and active'
 "
 
