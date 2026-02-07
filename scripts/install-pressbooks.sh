@@ -72,6 +72,16 @@ else
   exit 1
 fi
 
+# Set WP_ENV to development
+echo '🔧 Configuring WP_ENV to development...'
+if [ -f /var/www/html/.env ]; then
+  sed -i \"s/WP_ENV='production'/WP_ENV='development'/\" /var/www/html/.env
+  sed -i \"s/WP_ENV='staging'/WP_ENV='development'/\" /var/www/html/.env
+  echo '✅ WP_ENV set to development'
+else
+  echo '⚠️  .env file not found, skipping WP_ENV configuration'
+fi
+
 echo '✅ Pressbooks installed and active'
 "
 
