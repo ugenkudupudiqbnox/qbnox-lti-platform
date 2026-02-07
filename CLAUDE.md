@@ -408,6 +408,7 @@ exit;
 **Problem:** Accessing subsite wp-admin (e.g., `/test-book/wp-admin/`) causes infinite redirect loop
 **Solution:** Update `.htaccess` with Bedrock multisite-specific rewrite rules
 **Pattern:** Bedrock places WordPress core in `/web/wp/`, so subsite paths must be rewritten to map to core
+**Automation:** This is now automatically configured by `make install-pressbooks` (see `scripts/install-pressbooks.sh`)
 
 **Root Cause:** In Bedrock with subdirectory multisite:
 - WordPress core is at `/var/www/html/web/wp/`
