@@ -39,6 +39,15 @@ if ! wp plugin is-installed pressbooks --allow-root; then
   wp plugin install pressbooks --activate-network --allow-root
 fi
 
+# Install H5P for interactive content
+echo '📦 Installing H5P plugin for interactive content...'
+if ! wp plugin is-installed h5p --allow-root; then
+  wp plugin install h5p --activate-network --allow-root
+  echo '✅ H5P plugin installed and activated'
+else
+  echo '✅ H5P plugin already installed'
+fi
+
 # Configure .htaccess for Bedrock multisite (subdirectory)
 echo '🔧 Configuring .htaccess for Bedrock multisite...'
 cat > /var/www/html/web/.htaccess << 'HTACCESS_EOF'

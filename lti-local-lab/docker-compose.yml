@@ -67,6 +67,12 @@ services:
       WORDPRESS_DB_PASSWORD: root
       WORDPRESS_DB_NAME: pressbooks
       WORDPRESS_DEBUG: 1
+      # PHP Configuration for large file uploads and long operations
+      PHP_UPLOAD_MAX_FILESIZE: 256M
+      PHP_POST_MAX_SIZE: 256M
+      PHP_MEMORY_LIMIT: 512M
+      PHP_MAX_EXECUTION_TIME: 600
+      PHP_MAX_INPUT_TIME: 600
     volumes:
       - pressbooks-data:/var/www/html
     ports:

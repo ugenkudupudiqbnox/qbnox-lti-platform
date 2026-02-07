@@ -11,6 +11,12 @@ This is a **production-grade LTI 1.3 + LTI Advantage platform** for Pressbooks t
 - Own REST APIs, DB tables, crypto, lifecycle
 - Pressbooks acts only as a session/container layer
 
+**Important Note - Development Setup**: This repository uses a **Docker-based setup optimized for LTI integration development and testing**, not full production Pressbooks deployment. Key differences from production Pressbooks:
+- Uses WordPress Docker image + Pressbooks plugin (not pressbooksoss-bedrock)
+- Simplified dependencies for faster local development
+- Focused on LTI functionality, not all Pressbooks features
+- For production Pressbooks hosting, see: https://github.com/pressbooks/pressbooksoss-bedrock
+
 ## Development Commands
 
 ### Primary Interface
