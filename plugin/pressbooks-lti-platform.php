@@ -1,14 +1,14 @@
 <?php
 /**
  * Plugin Name: Pressbooks LTI Platform
- * Version: 0.8.0
+ * Version: 2.0.0
  * Network: true
  */
 defined('ABSPATH') || exit;
 
 error_log('[PB-LTI] Main plugin file loaded at ' . date('Y-m-d H:i:s'));
 
-define('PB_LTI_VERSION','0.8.0');
+define('PB_LTI_VERSION','2.0.0');
 define('PB_LTI_PATH',plugin_dir_path(__FILE__));
 
 error_log('[PB-LTI] Loading bootstrap.php from: ' . PB_LTI_PATH);

@@ -60,7 +60,7 @@ Designed for **long‑term institutional ownership**, not short‑term demos.
 
 ## Status
 
-🚀 Production‑ready (v0.8+)
+🚀 Production‑ready (v2.0.0+)
 
 ---
 
