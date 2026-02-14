@@ -205,7 +205,7 @@ fi
 
 # Configure .htaccess for Bedrock multisite
 echo '🔧 Configuring .htaccess for Bedrock multisite...'
-cat > /var/www/html/web/.htaccess << 'EOF'
+cat > /var/www/html/web/.htaccess <<-'HTACCESS'
 # BEGIN WordPress Multisite
 <IfModule mod_rewrite.c>
 RewriteEngine On
@@ -224,7 +224,7 @@ RewriteRule ^([_0-9a-zA-Z-]+/)?(.*.php)$ wp/$2 [L]
 RewriteRule . index.php [L]
 </IfModule>
 # END WordPress Multisite
-EOF
+HTACCESS
 
 echo '✅ .htaccess configured'
 
