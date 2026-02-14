@@ -34,13 +34,24 @@ retry() {
 }
 
 #############################################
-# Detect docker compose command
+# Docker Compose detection + file resolution
 #############################################
+
 if command -v docker-compose >/dev/null 2>&1; then
   DC="docker-compose"
 else
   DC="docker compose"
 fi
+
+# Location of compose file
+COMPOSE_FILE_PATH="${COMPOSE_FILE_PATH:-lti-local-lab/docker-compose.yml}"
+
+if [ ! -f "$COMPOSE_FILE_PATH" ]; then
+  echo "❌ Compose file not found at $COMPOSE_FILE_PATH"
+  exit 1
+fi
+
+DC="$DC -f $COMPOSE_FILE_PATH"
 
 #############################################
 # Defaults (CI safe)
