@@ -62,7 +62,7 @@ Designed for **long‑term institutional ownership**, not short‑term demos.
 
 ### Relationship with Pressbooks
 
-This plugin is an **independent integration** developed by Qbnox to enable LTI 1.3 connectivity between Learning Management Systems and Pressbooks installations.
+This plugin is an **independent integration** developed by [Qbnox Systems](https://www.qbnoxsystems.com) to enable LTI 1.3 connectivity between Learning Management Systems and Pressbooks installations.
 
 **Key Points:**
 - ✅ **Open Source:** Freely available under MIT license
@@ -86,8 +86,8 @@ For official Pressbooks products and support, visit [pressbooks.com](https://pre
 ## Getting Started
 
 See:
-- `[docs/ops/GO_LIVE_SOP.md](docs/ops/GO_LIVE_SOP.md)`
-- `[docs/compliance/](docs/compliance/)`
+- [docs/ops/GO_LIVE_SOP.md](docs/ops/GO_LIVE_SOP.md)
+- [docs/compliance/](docs/compliance/)
 
 ---
 
