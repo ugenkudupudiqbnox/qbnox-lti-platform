@@ -18,20 +18,42 @@ set -e
 
 cd /var/www/html
 
-# Wait for WordPress files (max 5 minutes)
-echo '⏳ Waiting for WordPress to be installed...'
-TIMEOUT=300
-ELAPSED=0
-until wp core is-installed --allow-root >/dev/null 2>&1; do
-  if [ \$ELAPSED -ge \$TIMEOUT ]; then
-    echo '❌ Timeout waiting for WordPress installation'
-    exit 1
+# Check if WordPress is already installed
+echo '🔧 Checking WordPress installation...'
+if wp core is-installed --allow-root >/dev/null 2>&1; then
+  echo '✅ WordPress is already installed'
+else
+  echo '⏳ Installing WordPress core...'
+  # Download WordPress if not present
+  if [ ! -f wp-config.php ]; then
+    echo '📥 Downloading WordPress...'
+    wp core download --allow-root --force
   fi
-  echo \"  Still waiting... (\${ELAPSED}s/\${TIMEOUT}s)\"
-  sleep 10
-  ELAPSED=\$((ELAPSED + 10))
-done
-echo '✅ WordPress is installed'
+
+  # Create wp-config.php if missing
+  if [ ! -f wp-config.php ]; then
+    echo '⚙️  Creating wp-config.php...'
+    wp config create \
+      --dbname=\${WORDPRESS_DB_NAME:-wordpress} \
+      --dbuser=\${WORDPRESS_DB_USER:-root} \
+      --dbpass=\${WORDPRESS_DB_PASSWORD:-root} \
+      --dbhost=\${WORDPRESS_DB_HOST:-mysql} \
+      --allow-root
+  fi
+
+  # Install WordPress
+  echo '🚀 Installing WordPress...'
+  wp core install \
+    --url=\"${PRESSBOOKS_URL}\" \
+    --title='Pressbooks LTI Platform' \
+    --admin_user=admin \
+    --admin_password=admin123 \
+    --admin_email=admin@example.com \
+    --skip-email \
+    --allow-root
+
+  echo '✅ WordPress installed successfully'
+fi
 
 # Install multisite if not already installed
 echo '🔧 Checking WordPress multisite...'
