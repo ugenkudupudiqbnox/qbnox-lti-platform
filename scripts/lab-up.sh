@@ -2,7 +2,14 @@
 set -e
 
 cd lti-local-lab
-docker-compose up -d
+
+if command -v docker-compose &> /dev/null; then
+  DC="docker-compose"
+else
+  DC="docker compose"
+fi
+
+$DC up -d
 
 echo "⏳ Waiting for services to become healthy..."
 
