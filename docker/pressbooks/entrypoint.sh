@@ -10,7 +10,16 @@ until mysqladmin ping -h"$DB_HOST" --skip-ssl --silent 2>/dev/null; do
   sleep 3
 done
 
-cd "$APP_ROOT"
+# Clone Pressbooks Bedrock if missing (volume might be empty on first run)
+if [ ! -f "$APP_ROOT/composer.json" ]; then
+  echo "Pressbooks Bedrock not found, cloning..."
+  git clone https://github.com/pressbooks/pressbooksoss-bedrock.git "$APP_ROOT"
+  cd "$APP_ROOT"
+  composer install --no-dev --prefer-dist --optimize-autoloader --no-interaction
+  chown -R www-data:www-data "$APP_ROOT"
+else
+  cd "$APP_ROOT"
+fi
 
 # Initialize .env if missing
 if [ ! -f .env ]; then
