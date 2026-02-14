@@ -103,6 +103,7 @@ class DeepLinkController {
         // Get parameters
         $book_id = intval($request->get_param('selected_book_id'));
         $content_id = $request->get_param('selected_content_id');
+        $selected_chapter_ids = $request->get_param('selected_chapter_ids');  // Comma-separated IDs
         $return_url = $request->get_param('deep_link_return_url');
         $client_id = $request->get_param('client_id');
 
@@ -127,13 +128,75 @@ class DeepLinkController {
         }
 
         // Get selected content details
-        $content_item = ContentService::get_content_item(
-            $book_id,
-            !empty($content_id) ? intval($content_id) : null
-        );
+        $content_items = [];
 
-        if (!$content_item) {
-            return new \WP_Error('invalid_selection', 'Selected content not found', ['status' => 404]);
+        if (!empty($selected_chapter_ids)) {
+            // Specific chapters selected - create activity for each selected chapter
+            $chapter_ids = array_map('intval', explode(',', $selected_chapter_ids));
+            error_log('[PB-LTI Deep Link] Selected chapters (IDs: ' . implode(', ', $chapter_ids) . ') from book ' . $book_id);
+
+            foreach ($chapter_ids as $chapter_id) {
+                $chapter_item = ContentService::get_content_item($book_id, $chapter_id);
+                if ($chapter_item) {
+                    $content_items[] = $chapter_item;
+                }
+            }
+
+            error_log('[PB-LTI Deep Link] Created ' . count($content_items) . ' activities for selected chapters');
+        } elseif (empty($content_id)) {
+            // Whole book selected (no chapter selection made) - create activity for each chapter
+            error_log('[PB-LTI Deep Link] Whole book selected (ID: ' . $book_id . ') - creating activities for all chapters');
+
+            $book_structure = ContentService::get_book_structure($book_id);
+            if (!$book_structure || empty($book_structure['chapters'])) {
+                return new \WP_Error('no_chapters', 'No chapters found in selected book', ['status' => 404]);
+            }
+
+            // Create content item for each chapter
+            foreach ($book_structure['chapters'] as $chapter) {
+                $chapter_item = ContentService::get_content_item($book_id, $chapter['id']);
+                if ($chapter_item) {
+                    $content_items[] = $chapter_item;
+                }
+            }
+
+            // Also include front matter and back matter if they exist
+            if (!empty($book_structure['front_matter'])) {
+                foreach ($book_structure['front_matter'] as $item) {
+                    $front_item = ContentService::get_content_item($book_id, $item['id']);
+                    if ($front_item) {
+                        array_unshift($content_items, $front_item);  // Add to beginning
+                    }
+                }
+            }
+
+            if (!empty($book_structure['back_matter'])) {
+                foreach ($book_structure['back_matter'] as $item) {
+                    $back_item = ContentService::get_content_item($book_id, $item['id']);
+                    if ($back_item) {
+                        $content_items[] = $back_item;  // Add to end
+                    }
+                }
+            }
+
+            error_log('[PB-LTI Deep Link] Created ' . count($content_items) . ' activities for whole book');
+        } else {
+            // Single chapter/content selected
+            $content_item = ContentService::get_content_item(
+                $book_id,
+                intval($content_id)
+            );
+
+            if (!$content_item) {
+                return new \WP_Error('invalid_selection', 'Selected content not found', ['status' => 404]);
+            }
+
+            $content_items[] = $content_item;
+            error_log('[PB-LTI Deep Link] Single content selected: ' . $content_item['title']);
+        }
+
+        if (empty($content_items)) {
+            return new \WP_Error('no_content', 'No valid content items found', ['status' => 404]);
         }
 
         // Build Deep Linking JWT response
@@ -148,7 +211,7 @@ class DeepLinkController {
             'nonce' => wp_generate_password(32, false),
             'https://purl.imsglobal.org/spec/lti/claim/message_type' => 'LtiDeepLinkingResponse',
             'https://purl.imsglobal.org/spec/lti/claim/version' => '1.3.0',
-            'https://purl.imsglobal.org/spec/lti-dl/claim/content_items' => [$content_item]
+            'https://purl.imsglobal.org/spec/lti-dl/claim/content_items' => $content_items
         ];
 
         // Debug logging

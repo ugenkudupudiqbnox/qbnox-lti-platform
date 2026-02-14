@@ -259,6 +259,146 @@ $deployment_id = $data['deployment_id'] ?? '';
         .selection-info strong {
             color: #0369a1;
         }
+
+        /* Chapter Confirmation Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            max-width: 700px;
+            width: 90%;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .modal-header {
+            background: #2271b1;
+            color: white;
+            padding: 20px;
+            border-radius: 8px 8px 0 0;
+        }
+
+        .modal-header h2 {
+            margin: 0;
+            font-size: 20px;
+        }
+
+        .modal-body {
+            padding: 20px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .modal-actions {
+            padding: 15px 20px;
+            border-top: 1px solid #e5e7eb;
+            display: flex;
+            gap: 10px;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chapter-checkbox-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .chapter-checkbox-item {
+            padding: 12px;
+            border: 1px solid #e5e7eb;
+            border-radius: 4px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            transition: background 0.2s;
+        }
+
+        .chapter-checkbox-item:hover {
+            background: #f9fafb;
+        }
+
+        .chapter-checkbox-item input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            margin-right: 12px;
+            cursor: pointer;
+        }
+
+        .chapter-checkbox-item label {
+            cursor: pointer;
+            flex: 1;
+            user-select: none;
+        }
+
+        .chapter-type-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            margin-right: 8px;
+        }
+
+        .badge-front {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .badge-chapter {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .badge-back {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .bulk-actions {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 13px;
+            border-radius: 4px;
+            border: 1px solid #d1d5db;
+            background: white;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-small:hover {
+            background: #f3f4f6;
+            border-color: #9ca3af;
+        }
+
+        .selected-count {
+            color: #6b7280;
+            font-size: 14px;
+        }
     </style>
 </head>
 <body>
@@ -308,6 +448,30 @@ $deployment_id = $data['deployment_id'] ?? '';
         </div>
     </div>
 
+    <!-- Chapter Selection Confirmation Modal -->
+    <div class="modal-overlay" id="chapter-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>📖 Select Chapters to Add</h2>
+                <p style="margin: 5px 0 0 0; opacity: 0.9; font-size: 14px;">Choose which chapters to add as activities</p>
+            </div>
+            <div class="modal-body">
+                <div class="bulk-actions">
+                    <button class="btn-small" onclick="selectAllChapters()">✓ Select All</button>
+                    <button class="btn-small" onclick="deselectAllChapters()">✗ Deselect All</button>
+                    <span class="selected-count" id="selected-count"></span>
+                </div>
+                <ul class="chapter-checkbox-list" id="chapter-checkbox-list">
+                    <!-- Populated by JavaScript -->
+                </ul>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeChapterModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="confirmChapterSelection()">Add Selected Chapters</button>
+            </div>
+        </div>
+    </div>
+
     <form id="selection-form" method="POST" action="<?php echo esc_url(rest_url('pb-lti/v1/deep-link')); ?>" style="display: none;">
         <input type="hidden" name="deep_link_return_url" value="<?php echo esc_attr($deep_link_return_url); ?>">
         <input type="hidden" name="client_id" value="<?php echo esc_attr($client_id); ?>">
@@ -316,6 +480,7 @@ $deployment_id = $data['deployment_id'] ?? '';
         <input type="hidden" name="selected_content_id" id="selected_content_id">
         <input type="hidden" name="selected_title" id="form_selected_title">
         <input type="hidden" name="selected_url" id="form_selected_url">
+        <input type="hidden" name="selected_chapter_ids" id="selected_chapter_ids">
     </form>
 
     <script>
@@ -496,11 +661,144 @@ $deployment_id = $data['deployment_id'] ?? '';
                 return;
             }
 
-            document.getElementById('selected_book_id').value = selectedBook.id;
-            document.getElementById('selected_content_id').value = selectedContent ? selectedContent.id : '';
-            document.getElementById('form_selected_title').value = selectedContent ? selectedContent.title : selectedBook.title;
-            document.getElementById('form_selected_url').value = selectedContent ? selectedContent.url : selectedBook.url;
+            // If specific chapter/content selected, submit directly
+            if (selectedContent) {
+                document.getElementById('selected_book_id').value = selectedBook.id;
+                document.getElementById('selected_content_id').value = selectedContent.id;
+                document.getElementById('form_selected_title').value = selectedContent.title;
+                document.getElementById('form_selected_url').value = selectedContent.url;
+                document.getElementById('selected_chapter_ids').value = '';
+                document.getElementById('selection-form').submit();
+                return;
+            }
 
+            // Whole book selected - show chapter selection modal
+            showChapterSelectionModal(selectedBook.id);
+        }
+
+        function showChapterSelectionModal(bookId) {
+            // Fetch book structure
+            fetch('<?php echo esc_url(admin_url('admin-ajax.php')); ?>', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `action=pb_lti_get_book_structure&book_id=${bookId}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    populateChapterCheckboxes(data.data);
+                    document.getElementById('chapter-modal').classList.add('active');
+                } else {
+                    alert('Failed to load chapters: ' + (data.data || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Failed to load chapters');
+            });
+        }
+
+        function populateChapterCheckboxes(structure) {
+            const list = document.getElementById('chapter-checkbox-list');
+            list.innerHTML = '';
+            let itemIndex = 0;
+
+            // Add front matter
+            if (structure.front_matter && structure.front_matter.length > 0) {
+                structure.front_matter.forEach(item => {
+                    list.appendChild(createChapterCheckbox(item, 'front', itemIndex++));
+                });
+            }
+
+            // Add chapters
+            if (structure.chapters && structure.chapters.length > 0) {
+                structure.chapters.forEach(chapter => {
+                    list.appendChild(createChapterCheckbox(chapter, 'chapter', itemIndex++));
+                });
+            }
+
+            // Add back matter
+            if (structure.back_matter && structure.back_matter.length > 0) {
+                structure.back_matter.forEach(item => {
+                    list.appendChild(createChapterCheckbox(item, 'back', itemIndex++));
+                });
+            }
+
+            updateSelectedCount();
+        }
+
+        function createChapterCheckbox(item, type, index) {
+            const li = document.createElement('li');
+            li.className = 'chapter-checkbox-item';
+
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.id = `chapter-${item.id}`;
+            checkbox.value = item.id;
+            checkbox.checked = true;
+            checkbox.onchange = updateSelectedCount;
+
+            const label = document.createElement('label');
+            label.htmlFor = `chapter-${item.id}`;
+
+            const badge = document.createElement('span');
+            badge.className = `chapter-type-badge badge-${type}`;
+            badge.textContent = type === 'front' ? 'Front' : type === 'back' ? 'Back' : 'Chapter';
+
+            label.appendChild(badge);
+            label.appendChild(document.createTextNode(item.title));
+
+            li.appendChild(checkbox);
+            li.appendChild(label);
+
+            return li;
+        }
+
+        function selectAllChapters() {
+            document.querySelectorAll('#chapter-checkbox-list input[type="checkbox"]').forEach(cb => {
+                cb.checked = true;
+            });
+            updateSelectedCount();
+        }
+
+        function deselectAllChapters() {
+            document.querySelectorAll('#chapter-checkbox-list input[type="checkbox"]').forEach(cb => {
+                cb.checked = false;
+            });
+            updateSelectedCount();
+        }
+
+        function updateSelectedCount() {
+            const checkboxes = document.querySelectorAll('#chapter-checkbox-list input[type="checkbox"]');
+            const checked = Array.from(checkboxes).filter(cb => cb.checked).length;
+            const total = checkboxes.length;
+            document.getElementById('selected-count').textContent = `${checked} of ${total} selected`;
+        }
+
+        function closeChapterModal() {
+            document.getElementById('chapter-modal').classList.remove('active');
+        }
+
+        function confirmChapterSelection() {
+            const selectedIds = Array.from(
+                document.querySelectorAll('#chapter-checkbox-list input[type="checkbox"]:checked')
+            ).map(cb => cb.value);
+
+            if (selectedIds.length === 0) {
+                alert('Please select at least one chapter');
+                return;
+            }
+
+            // Submit with selected chapter IDs
+            document.getElementById('selected_book_id').value = selectedBook.id;
+            document.getElementById('selected_content_id').value = '';  // Empty for multiple chapters
+            document.getElementById('selected_chapter_ids').value = selectedIds.join(',');
+            document.getElementById('form_selected_title').value = selectedBook.title;
+            document.getElementById('form_selected_url').value = selectedBook.url;
+
+            closeChapterModal();
             document.getElementById('selection-form').submit();
         }
 
