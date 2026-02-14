@@ -1,4 +1,4 @@
-# Pressbooks LTI Platform
+# Qbnox LTI Platform for Pressbooks
 
 [![CI](https://github.com/ugenkudupudiqbnox/pressbooks-lti-platform/actions/workflows/ci-matrix.yml/badge.svg)](https://github.com/ugenkudupudiqbnox/pressbooks-lti-platform/actions/workflows/ci.yml)
 ![Coverage](https://img.shields.io/badge/test%20coverage-integration%20%2B%20smoke-blue)
