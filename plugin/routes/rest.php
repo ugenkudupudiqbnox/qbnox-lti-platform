@@ -5,6 +5,7 @@ use PB_LTI\Controllers\LoginController;
 use PB_LTI\Controllers\LaunchController;
 use PB_LTI\Controllers\DeepLinkController;
 use PB_LTI\Controllers\AGSController;
+use PB_LTI\Controllers\LogoutController;
 
 // Debug logging
 error_log('[PB-LTI] routes/rest.php loaded at ' . date('Y-m-d H:i:s'));
@@ -75,6 +76,13 @@ add_action('plugins_loaded', function () {
     register_rest_route('pb-lti/v1', '/ags/post-score', [
         'methods' => 'POST',
         'callback' => [AGSController::class, 'post_score'],
+        'permission_callback' => '__return_true',
+    ]);
+
+    // Logout
+    register_rest_route('pb-lti/v1', '/logout', [
+        'methods' => ['GET', 'POST'],
+        'callback' => [LogoutController::class, 'handle'],
         'permission_callback' => '__return_true',
     ]);
     }, 10); // rest_api_init priority 10

@@ -29,24 +29,38 @@ class H5PGradeSyncEnhanced {
     public static function sync_grade_to_lms($data, $result_id, $content_id, $user_id) {
         error_log('[PB-LTI H5P Enhanced] Result saved - User: ' . $user_id . ', H5P: ' . $content_id . ', Score: ' . $data['score'] . '/' . $data['max_score']);
 
-        // Check if user has an active LTI context (came from LMS)
-        $lineitem_url = get_user_meta($user_id, '_lti_ags_lineitem', true);
+        // Get global LTI context (user-level)
         $platform_issuer = get_user_meta($user_id, '_lti_platform_issuer', true);
         $lti_user_id = get_user_meta($user_id, '_lti_user_id', true);
-        $resource_link_id = get_user_meta($user_id, '_lti_resource_link_id', true);
 
-        if (empty($lineitem_url) || empty($platform_issuer) || empty($lti_user_id)) {
-            error_log('[PB-LTI H5P Enhanced] No AGS context for user ' . $user_id . ' - skipping grade sync');
+        if (empty($platform_issuer) || empty($lti_user_id)) {
+            error_log('[PB-LTI H5P Enhanced] No LTI context for user ' . $user_id . ' - skipping grade sync');
             return;
         }
 
         // Find which chapter contains this H5P activity
         $post_id = self::find_chapter_containing_h5p($content_id);
         if (!$post_id) {
-            error_log('[PB-LTI H5P Enhanced] Could not find chapter for H5P ' . $content_id . ' - falling back to individual sync');
-            self::sync_individual_activity($data, $user_id, $lti_user_id, $platform_issuer, $lineitem_url);
+            error_log('[PB-LTI H5P Enhanced] Could not find chapter for H5P ' . $content_id);
             return;
         }
+
+        // Get chapter-specific lineitem for this user
+        $lineitem_key = '_lti_ags_lineitem_user_' . $user_id;
+        $lineitem_url = get_post_meta($post_id, $lineitem_key, true);
+
+        // Fallback to old user meta storage for backward compatibility
+        if (empty($lineitem_url)) {
+            error_log('[PB-LTI H5P Enhanced] No chapter-specific lineitem for post ' . $post_id . ', user ' . $user_id . ' - checking user meta fallback');
+            $lineitem_url = get_user_meta($user_id, '_lti_ags_lineitem', true);
+        }
+
+        if (empty($lineitem_url)) {
+            error_log('[PB-LTI H5P Enhanced] No lineitem URL found for post ' . $post_id . ', user ' . $user_id . ' - skipping grade sync');
+            return;
+        }
+
+        error_log('[PB-LTI H5P Enhanced] Using lineitem for post ' . $post_id . ', user ' . $user_id . ': ' . $lineitem_url);
 
         // Check if chapter has grading configuration enabled
         if (!H5PResultsManager::is_grading_enabled($post_id)) {
@@ -327,13 +341,28 @@ class H5PGradeSyncEnhanced {
 
         // Process each user
         foreach ($users_to_sync as $wp_user_id => $content_ids) {
-            // Check if user has LTI context
-            $lineitem_url = get_user_meta($wp_user_id, '_lti_ags_lineitem', true);
+            // Check if user has LTI context (global)
             $platform_issuer = get_user_meta($wp_user_id, '_lti_platform_issuer', true);
             $lti_user_id = get_user_meta($wp_user_id, '_lti_user_id', true);
 
-            if (empty($lineitem_url) || empty($platform_issuer) || empty($lti_user_id)) {
+            if (empty($platform_issuer) || empty($lti_user_id)) {
                 error_log('[PB-LTI H5P Sync] User ' . $wp_user_id . ' has no LTI context - skipping');
+                $results['skipped']++;
+                continue;
+            }
+
+            // Get chapter-specific lineitem for this user
+            $lineitem_key = '_lti_ags_lineitem_user_' . $wp_user_id;
+            $lineitem_url = get_post_meta($post_id, $lineitem_key, true);
+
+            // Fallback to old user meta storage for backward compatibility
+            if (empty($lineitem_url)) {
+                error_log('[PB-LTI H5P Sync] No chapter-specific lineitem for post ' . $post_id . ', user ' . $wp_user_id . ' - checking user meta fallback');
+                $lineitem_url = get_user_meta($wp_user_id, '_lti_ags_lineitem', true);
+            }
+
+            if (empty($lineitem_url)) {
+                error_log('[PB-LTI H5P Sync] User ' . $wp_user_id . ' has no lineitem URL for post ' . $post_id . ' - skipping');
                 $results['skipped']++;
                 continue;
             }
