@@ -31,8 +31,9 @@ class H5PGradeSync {
         // Check if user has an active LTI context (came from Moodle)
         $lineitem_url = get_user_meta($user_id, '_lti_ags_lineitem', true);
         $platform_issuer = get_user_meta($user_id, '_lti_platform_issuer', true);
+        $lti_user_id = get_user_meta($user_id, '_lti_user_id', true);
 
-        if (empty($lineitem_url) || empty($platform_issuer)) {
+        if (empty($lineitem_url) || empty($platform_issuer) || empty($lti_user_id)) {
             error_log('[PB-LTI H5P] No AGS context for user ' . $user_id . ' - skipping grade sync');
             return;
         }
@@ -48,7 +49,7 @@ class H5PGradeSync {
 
         $percentage = ($score / $max_score) * 100;
 
-        error_log('[PB-LTI H5P] Sending grade to Moodle - Score: ' . $percentage . '% (' . $score . '/' . $max_score . ')');
+        error_log('[PB-LTI H5P] H5P Result - Score: ' . $percentage . '% (' . $score . '/' . $max_score . ')');
 
         // Get platform configuration for OAuth2
         global $wpdb;
@@ -63,14 +64,37 @@ class H5PGradeSync {
             return;
         }
 
+        // Fetch lineitem details to detect if it's a scale or points
+        $lineitem = AGSClient::fetch_lineitem($platform, $lineitem_url);
+
+        $final_score = $score;
+        $final_max = $max_score;
+
+        if ($lineitem) {
+            // Detect scale type
+            $scale_type = ScaleMapper::detect_scale($lineitem);
+
+            if ($scale_type && $scale_type !== 'unknown') {
+                // Map percentage to scale value
+                $mapped = ScaleMapper::map_to_scale($percentage, $scale_type);
+                $final_score = $mapped['score'];
+                $final_max = $mapped['max'];
+                error_log('[PB-LTI H5P] Using scale grading: ' . $mapped['label'] . ' (value: ' . $final_score . ')');
+            } else {
+                error_log('[PB-LTI H5P] Using point grading: ' . $score . '/' . $max_score);
+            }
+        } else {
+            error_log('[PB-LTI H5P] Could not fetch lineitem - using raw H5P score');
+        }
+
         // Send grade via AGS
         try {
             $result = AGSClient::post_score(
                 $platform,
                 $lineitem_url,
-                $user_id,
-                $percentage,
-                100,
+                $lti_user_id,  // Use LTI user ID, not WordPress user ID
+                $final_score,
+                $final_max,
                 'Completed',
                 'FullyGraded'
             );

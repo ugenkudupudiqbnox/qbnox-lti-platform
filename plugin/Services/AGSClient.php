@@ -2,6 +2,7 @@
 namespace PB_LTI\Services;
 
 use GuzzleHttp\Client;
+use Firebase\JWT\JWT;
 
 class AGSClient {
 
@@ -25,9 +26,20 @@ class AGSClient {
                 $token = self::fetch_token($platform);
             }
 
+            // Parse URL and add /scores to path (before query string)
+            $url_parts = parse_url($lineitem_url);
+            $scores_url = $url_parts['scheme'] . '://' . $url_parts['host'];
+            if (isset($url_parts['port'])) {
+                $scores_url .= ':' . $url_parts['port'];
+            }
+            $scores_url .= $url_parts['path'] . '/scores';
+            if (isset($url_parts['query'])) {
+                $scores_url .= '?' . $url_parts['query'];
+            }
+
             // Post score to AGS endpoint
             $client = new Client();
-            $response = $client->post($lineitem_url . '/scores', [
+            $response = $client->post($scores_url, [
                 'headers' => [
                     'Authorization' => 'Bearer ' . $token,
                     'Content-Type' => 'application/vnd.ims.lis.v1.score+json'
@@ -72,25 +84,97 @@ class AGSClient {
         ]);
     }
 
+    /**
+     * Fetch OAuth2 access token using JWT client assertion (RFC 7523)
+     * Required for LTI 1.3 Advantage token endpoint
+     */
     private static function fetch_token($platform): string {
-        $secret = SecretVault::retrieve($platform->issuer);
-        if (!$secret) {
-            throw new \Exception('Client secret not configured');
+        global $wpdb;
+
+        // Get tool's private key for signing JWT client assertion
+        $key_row = $wpdb->get_row($wpdb->prepare(
+            "SELECT private_key FROM {$wpdb->base_prefix}lti_keys WHERE kid = %s",
+            'pb-lti-2024'
+        ));
+
+        if (!$key_row) {
+            throw new \Exception('Private key not found for JWT signing');
         }
 
+        // Create JWT client assertion
+        // Per RFC 7523 and LTI 1.3 Security spec
+        $jwt_payload = [
+            'iss' => $platform->client_id,  // Issuer: tool's client ID
+            'sub' => $platform->client_id,  // Subject: tool's client ID
+            'aud' => $platform->auth_token_url,  // Audience: token endpoint
+            'iat' => time(),
+            'exp' => time() + 60,  // Valid for 60 seconds
+            'jti' => bin2hex(random_bytes(16))  // Unique token ID
+        ];
+
+        // Sign JWT with tool's private key
+        $client_assertion = \Firebase\JWT\JWT::encode(
+            $jwt_payload,
+            $key_row->private_key,
+            'RS256',
+            'pb-lti-2024'
+        );
+
+        // Request access token using JWT client assertion
         $client = new Client();
         $res = $client->post($platform->auth_token_url, [
-            'auth' => [$platform->client_id, $secret],
             'form_params' => [
                 'grant_type' => 'client_credentials',
-                'scope' => 'https://purl.imsglobal.org/spec/lti-ags/scope/score'
+                'client_assertion_type' => 'urn:ietf:params:oauth:client-assertion-type:jwt-bearer',
+                'client_assertion' => $client_assertion,
+                'scope' => 'https://purl.imsglobal.org/spec/lti-ags/scope/lineitem.readonly https://purl.imsglobal.org/spec/lti-ags/scope/score'
             ]
         ]);
 
         $data = json_decode($res->getBody(), true);
-        TokenCache::set($platform->issuer, $data['access_token'], $data['expires_in']);
+
+        if (!isset($data['access_token'])) {
+            throw new \Exception('No access token in response');
+        }
+
+        // Cache the token
+        TokenCache::set($platform->issuer, $data['access_token'], $data['expires_in'] ?? 3600);
 
         return $data['access_token'];
+    }
+
+    /**
+     * Fetch lineitem details from Moodle
+     *
+     * @param object $platform Platform configuration
+     * @param string $lineitem_url AGS lineitem URL
+     * @return array|null Lineitem details or null on failure
+     */
+    public static function fetch_lineitem($platform, $lineitem_url) {
+        try {
+            // Get OAuth2 token
+            $token = TokenCache::get($platform->issuer);
+            if (!$token) {
+                $token = self::fetch_token($platform);
+            }
+
+            // Fetch lineitem details
+            $client = new Client();
+            $response = $client->get($lineitem_url, [
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $token,
+                    'Accept' => 'application/vnd.ims.lis.v2.lineitem+json'
+                ]
+            ]);
+
+            $lineitem = json_decode($response->getBody(), true);
+            error_log('[PB-LTI AGS] Fetched lineitem: ' . json_encode($lineitem));
+
+            return $lineitem;
+        } catch (\Exception $e) {
+            error_log('[PB-LTI AGS] Failed to fetch lineitem: ' . $e->getMessage());
+            return null;
+        }
     }
 
     private static function enforce_scope(array $scopes, string $required): void {

@@ -42,6 +42,7 @@ class LaunchController {
             update_user_meta($user_id, '_lti_ags_scope', $ags_claim->scope ?? []);
             update_user_meta($user_id, '_lti_platform_issuer', $claims->iss);
             update_user_meta($user_id, '_lti_resource_link_id', $claims->{'https://purl.imsglobal.org/spec/lti/claim/resource_link'}->id ?? '');
+            update_user_meta($user_id, '_lti_user_id', $claims->sub); // LTI user ID for grade posting
 
             error_log('[PB-LTI] Stored AGS context for user ' . $user_id . ' - lineitem: ' . $ags_claim->lineitem);
         }

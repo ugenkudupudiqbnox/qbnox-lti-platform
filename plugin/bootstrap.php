@@ -14,6 +14,7 @@ require_once PB_LTI_PATH.'Services/JwtValidator.php';
 require_once PB_LTI_PATH.'Services/RoleMapper.php';
 require_once PB_LTI_PATH.'Services/TokenCache.php';
 require_once PB_LTI_PATH.'Services/AGSClient.php';
+require_once PB_LTI_PATH.'Services/ScaleMapper.php';
 require_once PB_LTI_PATH.'Services/LineItemService.php';
 require_once PB_LTI_PATH.'Services/ContentService.php';
 require_once PB_LTI_PATH.'Services/EmbedService.php';
