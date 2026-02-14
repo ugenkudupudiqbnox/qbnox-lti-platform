@@ -44,12 +44,12 @@ if ! command -v wp &> /dev/null; then
   echo '✅ WP-CLI installed'
 fi
 
-# Install MySQL client if not present
-if ! command -v mysql &> /dev/null; then
-  echo '📥 Installing MySQL client...'
+# Install MySQL client and unzip if not present
+if ! command -v mysql &> /dev/null || ! command -v unzip &> /dev/null; then
+  echo '📥 Installing required packages...'
   apt-get update -qq >/dev/null 2>&1
-  apt-get install -y -qq default-mysql-client >/dev/null 2>&1
-  echo '✅ MySQL client installed'
+  apt-get install -y -qq default-mysql-client unzip curl >/dev/null 2>&1
+  echo '✅ Required packages installed'
 fi
 
 # Wait for MySQL and create database if needed
@@ -149,34 +149,28 @@ else
   echo '✅ Multisite already configured'
 fi
 
-# Install Composer if not present
-if ! command -v composer &> /dev/null; then
-  echo '📥 Installing Composer...'
-  curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
-  echo '✅ Composer installed'
-fi
+# Install Pressbooks from GitHub
+echo '📦 Installing Pressbooks plugin...'
+if ! wp plugin is-installed pressbooks --allow-root 2>/dev/null; then
+  echo '⏳ Downloading Pressbooks from GitHub (this may take 1-2 minutes)...'
 
-# Install Pressbooks via Composer (Bedrock method)
-echo '📦 Installing Pressbooks and dependencies...'
-if [ ! -d /var/www/html/web/app/plugins/pressbooks ]; then
-  echo '⏳ Running composer install (this may take 2-3 minutes)...'
+  # Install Pressbooks from GitHub releases
+  # Latest stable: https://github.com/pressbooks/pressbooks/releases
+  cd /var/www/html/wp-content/plugins
+  curl -L -o pressbooks.zip https://github.com/pressbooks/pressbooks/releases/download/6.32.0/pressbooks-6.32.0.zip
+  unzip -q pressbooks.zip
+  rm pressbooks.zip
+  chown -R www-data:www-data pressbooks
 
-  # Install all dependencies from composer.json (includes Pressbooks)
-  cd /var/www/html
-  composer install --no-interaction --no-dev --optimize-autoloader
-
-  echo '✅ Pressbooks and dependencies installed'
+  # Activate network-wide
+  wp plugin activate pressbooks --network --allow-root
+  echo '✅ Pressbooks installed and activated'
 else
   echo '✅ Pressbooks already installed'
-fi
-
-# Activate Pressbooks network-wide
-if wp plugin is-installed pressbooks --allow-root 2>/dev/null; then
+  # Make sure it's activated network-wide
   if ! wp plugin is-active-for-network pressbooks --allow-root 2>/dev/null; then
     wp plugin activate pressbooks --network --allow-root
     echo '✅ Pressbooks activated network-wide'
-  else
-    echo '✅ Pressbooks already active'
   fi
 fi
 
