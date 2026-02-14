@@ -18,13 +18,25 @@ set -e
 
 cd /var/www/html
 
-# Wait for WordPress files
+# Wait for WordPress files (max 5 minutes)
+echo '⏳ Waiting for WordPress to be installed...'
+TIMEOUT=300
+ELAPSED=0
 until wp core is-installed --allow-root >/dev/null 2>&1; do
-  sleep 5
+  if [ \$ELAPSED -ge \$TIMEOUT ]; then
+    echo '❌ Timeout waiting for WordPress installation'
+    exit 1
+  fi
+  echo \"  Still waiting... (\${ELAPSED}s/\${TIMEOUT}s)\"
+  sleep 10
+  ELAPSED=\$((ELAPSED + 10))
 done
+echo '✅ WordPress is installed'
 
 # Install multisite if not already installed
+echo '🔧 Checking WordPress multisite...'
 if ! wp site list --allow-root >/dev/null 2>&1; then
+  echo '⏳ Converting to multisite...'
   wp core multisite-install \
     --url=\"${PRESSBOOKS_URL}\" \
     --title='Pressbooks LTI Platform' \
@@ -32,11 +44,19 @@ if ! wp site list --allow-root >/dev/null 2>&1; then
     --admin_password=admin123 \
     --admin_email=admin@example.com \
     --allow-root
+  echo '✅ Multisite installed'
+else
+  echo '✅ Multisite already configured'
 fi
 
 # Install Pressbooks plugin if missing
+echo '📦 Checking Pressbooks plugin...'
 if ! wp plugin is-installed pressbooks --allow-root; then
+  echo '⏳ Downloading and installing Pressbooks (this may take 1-2 minutes)...'
   wp plugin install pressbooks --activate-network --allow-root
+  echo '✅ Pressbooks installed and activated'
+else
+  echo '✅ Pressbooks already installed'
 fi
 
 # Install H5P for interactive content

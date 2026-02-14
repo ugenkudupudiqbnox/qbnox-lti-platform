@@ -15,23 +15,40 @@ jobs:
       - name: Set Moodle version
         run: echo "MOODLE_VERSION=${{ matrix.moodle }}" >> $GITHUB_ENV
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Cache Docker layers
+        uses: actions/cache@v4
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-docker-${{ hashFiles('**/docker-compose.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-docker-
+
       - name: Start lab
         run: make up
+        timeout-minutes: 5
 
       - name: Install Pressbooks
         run: make install-pressbooks
+        timeout-minutes: 8
 
       - name: Install plugin
         run: make install
+        timeout-minutes: 3
 
       - name: Register LTI
         run: make enable-lti
+        timeout-minutes: 2
 
       - name: Seed data
         run: make seed seed-books
+        timeout-minutes: 3
 
       - name: Run advanced tests
         run: |
           php scripts/ci-verify-jwt-crypto.php "$JWT"
           php scripts/ci-test-ags-differential.php
           php scripts/ci-test-per-course-grades.php
+        timeout-minutes: 5
