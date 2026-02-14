@@ -327,7 +327,7 @@ Contact your administrator to add support for additional scales.
 - **Developer Docs:** See `docs/DEVELOPER_ONBOARDING.md`
 - **Troubleshooting:** See `docs/SESSION_MONITOR_TESTING.md`
 
-**Report Issues:** https://github.com/ugenkudupudiqbnox/pressbooks-lti-platform/issues
+**Report Issues:** https://github.com/ugenkudupudiqbnox/qbnox-lti-platform/issues
 
 ---
 

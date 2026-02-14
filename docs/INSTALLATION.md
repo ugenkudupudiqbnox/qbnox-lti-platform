@@ -26,7 +26,7 @@ This guide covers installation for both **developers** (using Docker) and **end 
 
 ```bash
 # Clone repository
-git clone https://github.com/your-org/pressbooks-lti-platform.git
+git clone https://github.com/ugenkudupudiqbnox/qbnox-lti-platform.git
 cd pressbooks-lti-platform
 
 # Configure environment
@@ -139,7 +139,7 @@ This section is for users with **existing Moodle and Pressbooks installations**.
 1. **Download Plugin**
    ```bash
    # Download latest release
-   wget https://github.com/your-org/pressbooks-lti-platform/releases/latest/download/pressbooks-lti-platform.zip
+   wget https://github.com/ugenkudupudiqbnox/qbnox-lti-platform/releases/latest/download/pressbooks-lti-platform.zip
    ```
 
 2. **Upload to Pressbooks**
@@ -162,7 +162,7 @@ This section is for users with **existing Moodle and Pressbooks installations**.
 cd /path/to/pressbooks/web/app/plugins/
 
 # Clone or extract plugin
-git clone https://github.com/your-org/pressbooks-lti-platform.git
+git clone https://github.com/ugenkudupudiqbnox/qbnox-lti-platform.git
 # OR
 unzip pressbooks-lti-platform.zip
 
@@ -181,7 +181,7 @@ wp plugin activate pressbooks-lti-platform --network --allow-root
 cd /path/to/wordpress/wp-content/plugins/
 
 # Clone or extract plugin
-git clone https://github.com/your-org/pressbooks-lti-platform.git
+git clone https://github.com/ugenkudupudiqbnox/qbnox-lti-platform.git
 
 # Set permissions
 chown -R www-data:www-data pressbooks-lti-platform
@@ -200,7 +200,7 @@ Add to `composer.json`:
   "repositories": [
     {
       "type": "vcs",
-      "url": "https://github.com/your-org/pressbooks-lti-platform"
+      "url": "https://github.com/ugenkudupudiqbnox/qbnox-lti-platform"
     }
   ],
   "require": {
@@ -484,7 +484,7 @@ wp plugin deactivate pressbooks-lti-platform --network --allow-root
 # Update plugin files
 cd /path/to/plugins/
 rm -rf pressbooks-lti-platform
-git clone https://github.com/your-org/pressbooks-lti-platform.git
+git clone https://github.com/ugenkudupudiqbnox/qbnox-lti-platform.git
 # OR unzip new version
 
 # Set permissions
@@ -528,7 +528,7 @@ wp cache flush --allow-root
 
 ### Support Resources
 - 📖 [Full Documentation](../README.md)
-- 🐛 [Issue Tracker](https://github.com/your-org/pressbooks-lti-platform/issues)
+- 🐛 [Issue Tracker](https://github.com/ugenkudupudiqbnox/qbnox-lti-platform/issues)
 - 💬 [Community Forum](https://community.pressbooks.org)
 - 📧 [Email Support](mailto:support@example.com)
 
@@ -561,4 +561,4 @@ After successful installation:
 
 ---
 
-**Need help?** Check our [troubleshooting guide](./TROUBLESHOOTING.md) or [open an issue](https://github.com/your-org/pressbooks-lti-platform/issues).
+**Need help?** Check our [troubleshooting guide](./TROUBLESHOOTING.md) or [open an issue](https://github.com/ugenkudupudiqbnox/qbnox-lti-platform/issues).
