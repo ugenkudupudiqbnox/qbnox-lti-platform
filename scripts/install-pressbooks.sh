@@ -57,11 +57,17 @@ DC="$DC -f $COMPOSE_FILE_PATH"
 # Ensure containers are started
 #############################################
 
-log "Starting Docker containers..."
-$DC up -d
+#############################################
+# Wait for WordPress container to be running
+#############################################
 
-# Give Docker a moment to register services
-sleep 5
+log "Waiting for WordPress container..."
+
+retry 15 bash -c "$DC ps --services --filter status=running | grep -q '^${WP_CONTAINER}$'"
+
+retry 15 $DC exec -T "$WP_CONTAINER" wp --info >/dev/null
+
+ok "WordPress container ready"
 
 #############################################
 # Defaults (CI safe)
