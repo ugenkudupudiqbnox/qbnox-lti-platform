@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/logo.png" width="180" alt="Qbnox LTI Platform Logo" />
+</p>
+
 # Qbnox LTI Platform for Pressbooks
 
 [![CI](https://github.com/ugenkudupudiqbnox/qbnox-lti-platform/actions/workflows/ci-matrix.yml/badge.svg)](https://github.com/ugenkudupudiqbnox/qbnox-lti-platform/actions/workflows/ci.yml)
