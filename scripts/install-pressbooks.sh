@@ -10,6 +10,26 @@ warn() { echo -e "⚠️  $*"; }
 err()  { echo -e "❌ $*" >&2; }
 
 #############################################
+# Defaults (define BEFORE using)
+#############################################
+DB_CONTAINER="${DB_CONTAINER:-mysql}"
+WP_CONTAINER="${WP_CONTAINER:-wordpress}"
+
+DB_NAME="${DB_NAME:-pressbooks}"
+DB_USER="${DB_USER:-root}"
+DB_PASSWORD="${DB_PASSWORD:-root}"
+DB_HOST="${DB_HOST:-mysql}"
+
+WP_HOME="${WP_HOME:-http://localhost:8000}"
+WP_SITEURL="${WP_SITEURL:-http://localhost:8000/wp}"
+WP_TITLE="${WP_TITLE:-Pressbooks}"
+WP_ADMIN_USER="${WP_ADMIN_USER:-admin}"
+WP_ADMIN_PASSWORD="${WP_ADMIN_PASSWORD:-admin}"
+WP_ADMIN_EMAIL="${WP_ADMIN_EMAIL:-admin@example.com}"
+
+log "Starting hardened Pressbooks installation"
+
+#############################################
 # Retry helper with exponential backoff
 #############################################
 retry() {
@@ -68,26 +88,6 @@ retry 15 bash -c "$DC ps --services --filter status=running | grep -q '^${WP_CON
 retry 15 $DC exec -T "$WP_CONTAINER" wp --info >/dev/null
 
 ok "WordPress container ready"
-
-#############################################
-# Defaults (CI safe)
-#############################################
-DB_CONTAINER="${DB_CONTAINER:-mysql}"
-WP_CONTAINER="${WP_CONTAINER:-wordpress}"
-
-DB_NAME="${DB_NAME:-pressbooks}"
-DB_USER="${DB_USER:-root}"
-DB_PASSWORD="${DB_PASSWORD:-root}"
-DB_HOST="${DB_HOST:-mysql}"
-
-WP_HOME="${WP_HOME:-http://localhost:8000}"
-WP_SITEURL="${WP_SITEURL:-http://localhost:8000/wp}"
-WP_TITLE="${WP_TITLE:-Pressbooks}"
-WP_ADMIN_USER="${WP_ADMIN_USER:-admin}"
-WP_ADMIN_PASSWORD="${WP_ADMIN_PASSWORD:-admin}"
-WP_ADMIN_EMAIL="${WP_ADMIN_EMAIL:-admin@example.com}"
-
-log "Starting hardened Pressbooks installation"
 
 #############################################
 # Ensure containers are running
