@@ -231,4 +231,3 @@ echo '✅ .htaccess configured'
 # Set final permissions
 chown -R www-data:www-data /var/www/html
 echo '✅ Pressbooks Bedrock installation complete'
-"
