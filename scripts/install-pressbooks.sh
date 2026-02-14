@@ -205,7 +205,7 @@ fi
 
 # Configure .htaccess for Bedrock multisite
 echo '🔧 Configuring .htaccess for Bedrock multisite...'
-cat > /var/www/html/web/.htaccess <<'EOF'
+cat > "/var/www/html/web/.htaccess" <<'EOF'
 # BEGIN WordPress (Pressbooks / Bedrock)
 <IfModule mod_rewrite.c>
 RewriteEngine On
