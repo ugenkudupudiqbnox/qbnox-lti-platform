@@ -205,8 +205,8 @@ fi
 
 # Configure .htaccess for Bedrock multisite
 echo '🔧 Configuring .htaccess for Bedrock multisite...'
-cat > /var/www/html/web/.htaccess <<-'HTACCESS'
-# BEGIN WordPress Multisite
+cat > /var/www/html/web/.htaccess <<'EOF'
+# BEGIN WordPress (Pressbooks / Bedrock)
 <IfModule mod_rewrite.c>
 RewriteEngine On
 RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
@@ -220,11 +220,11 @@ RewriteCond %{REQUEST_FILENAME} -f [OR]
 RewriteCond %{REQUEST_FILENAME} -d
 RewriteRule ^ - [L]
 RewriteRule ^([_0-9a-zA-Z-]+/)?(wp-(content|admin|includes).*) wp/$2 [L]
-RewriteRule ^([_0-9a-zA-Z-]+/)?(.*.php)$ wp/$2 [L]
+RewriteRule ^([_0-9a-zA-Z-]+/)?(.*\.php)$ wp/$2 [L]
 RewriteRule . index.php [L]
 </IfModule>
-# END WordPress Multisite
-HTACCESS
+# END WordPress
+EOF
 
 echo '✅ .htaccess configured'
 
