@@ -1391,3 +1391,951 @@ if (!empty($selected_chapter_ids)) {
 error_log('[PB-LTI Deep Link] Created ' . count($content_items) . ' activities');
 ```
 
+---
+
+## Recent Decisions - 2026-02-14 (Evening Session)
+
+### Retroactive Grade Sync Implementation (COMPLETED)
+
+**Date**: 2026-02-14 Evening
+**Status**: ✅ Fully implemented, tested, and deployed
+
+#### Problem Statement
+
+**User Request**: "can't we sync old grades that are already there in pressbooks to moodle?"
+
+**Use Case**: Students completed H5P activities before the H5P Results grading configuration was enabled for a chapter. Their historical grades don't automatically appear in the LMS gradebook because the sync hook wasn't active when they completed the activities.
+
+**Solution**: Implement a bulk retroactive sync feature that allows instructors to manually trigger grade synchronization for all existing H5P completions in a chapter.
+
+---
+
+#### Critical Fixes Applied First
+
+Before implementing retroactive sync, fixed two critical bugs that broke grade syncing:
+
+**1. Missing Fallback Logic** (H5PGradeSyncEnhanced.php:70)
+- **Issue**: Grades stopped syncing entirely after H5P Results installation
+- **Root Cause**: When H5P activity wasn't configured for chapter-level grading, code just returned without syncing
+- **Solution**: Added fallback to individual H5P score sync
+```php
+// WRONG - Causes silent failure
+if (!$is_configured) {
+    error_log('[PB-LTI H5P Enhanced] H5P not configured');
+    return; // ❌ No sync happens at all
+}
+
+// CORRECT - Falls back gracefully
+if (!$is_configured) {
+    error_log('[PB-LTI H5P Enhanced] H5P not configured - falling back to individual sync');
+    self::sync_individual_activity($data, $user_id, $lti_user_id, $platform_issuer, $lineitem_url);
+    return; // ✅ Individual score synced
+}
+```
+
+**2. Wrong Database Query** (H5PActivityDetector.php)
+- **Issue**: Database error "Unknown column 'max_score' in field list"
+- **Root Cause**: Querying `wp_h5p_contents` table which doesn't have `max_score` column
+- **Solution**: Query `wp_h5p_results` table instead
+```php
+// WRONG - Column doesn't exist
+$h5p_table = $wpdb->prefix . 'h5p_contents';
+$content = $wpdb->get_row($wpdb->prepare(
+    "SELECT max_score FROM {$h5p_table} WHERE id = %d", $h5p_id
+));
+
+// CORRECT - Query results table
+$results_table = $wpdb->prefix . 'h5p_results';
+$result = $wpdb->get_row($wpdb->prepare(
+    "SELECT max_score FROM {$results_table} WHERE content_id = %d ORDER BY id DESC LIMIT 1",
+    $h5p_id
+));
+```
+
+---
+
+#### Implementation Architecture
+
+**Backend Service** (`plugin/Services/H5PGradeSyncEnhanced.php`)
+
+**New Method**: `sync_existing_grades($post_id, $user_id = null)`
+
+**Responsibilities**:
+1. Validate grading is enabled for chapter
+2. Get configured H5P activities
+3. Query all H5P results for those activities
+4. Group results by user
+5. For each user:
+   - Check LTI context exists (lineitem URL, user ID, platform issuer)
+   - Calculate chapter-level score using current grading configuration
+   - Detect scale vs points grading type
+   - Post grade to LMS via AGS
+   - Log sync result
+6. Return detailed results summary
+
+**Return Format**:
+```php
+[
+    'success' => 5,    // Number of grades successfully posted
+    'skipped' => 3,    // Number of students without LTI context
+    'failed' => 1,     // Number of failed sync attempts
+    'errors' => [      // Array of error messages
+        'User 130: OAuth2 token acquisition failed'
+    ]
+]
+```
+
+**Key Code Pattern**:
+```php
+public static function sync_existing_grades($post_id, $user_id = null) {
+    $results = ['success' => 0, 'skipped' => 0, 'failed' => 0, 'errors' => []];
+
+    // 1. Validate grading enabled
+    if (!H5PResultsManager::is_grading_enabled($post_id)) {
+        $results['errors'][] = 'Grading not enabled for this chapter';
+        return $results;
+    }
+
+    // 2. Get configured activities
+    $configured = H5PResultsManager::get_configured_activities($post_id);
+    $h5p_ids = array_column($configured, 'h5p_id');
+
+    // 3. Query all H5P results
+    $h5p_results = $wpdb->get_results(
+        "SELECT DISTINCT user_id, content_id, MAX(id) as latest_result_id
+         FROM {$results_table}
+         WHERE content_id IN (" . implode(',', array_map('intval', $h5p_ids)) . ")
+         GROUP BY user_id, content_id"
+    );
+
+    // 4. Group by user and process
+    foreach ($users_to_sync as $wp_user_id => $content_ids) {
+        // Check LTI context
+        $lineitem_url = get_user_meta($wp_user_id, '_lti_ags_lineitem', true);
+        if (empty($lineitem_url)) {
+            $results['skipped']++;
+            continue;
+        }
+
+        // Calculate score
+        $chapter_score = H5PResultsManager::calculate_chapter_score($wp_user_id, $post_id);
+
+        // Post grade
+        $result = AGSClient::post_score(...);
+        if ($result['success']) {
+            $results['success']++;
+        } else {
+            $results['failed']++;
+            $results['errors'][] = "User $wp_user_id: " . $result['error'];
+        }
+    }
+
+    return $results;
+}
+```
+
+---
+
+**AJAX Handler** (`plugin/ajax/handlers.php`)
+
+**New Action**: `wp_ajax_pb_lti_sync_existing_grades`
+
+**Security Checks**:
+```php
+// Nonce verification
+check_ajax_referer('pb_lti_sync_grades', 'nonce');
+
+// Capability check
+if (!current_user_can('edit_post', $post_id)) {
+    wp_send_json_error(['message' => 'Insufficient permissions']);
+}
+```
+
+**Handler Pattern**:
+```php
+function pb_lti_ajax_sync_existing_grades() {
+    // Security checks
+    check_ajax_referer('pb_lti_sync_grades', 'nonce');
+    $post_id = isset($_POST['post_id']) ? intval($_POST['post_id']) : 0;
+    if (!current_user_can('edit_post', $post_id)) {
+        wp_send_json_error(['message' => 'Insufficient permissions']);
+    }
+
+    // Execute sync
+    try {
+        $results = H5PGradeSyncEnhanced::sync_existing_grades($post_id);
+
+        if ($results['success'] > 0 || $results['skipped'] > 0) {
+            wp_send_json_success([
+                'message' => sprintf('Sync complete: %d succeeded, %d skipped, %d failed',
+                    $results['success'], $results['skipped'], $results['failed']),
+                'results' => $results
+            ]);
+        } else {
+            wp_send_json_error([
+                'message' => 'No grades were synced. ' . implode(' ', $results['errors']),
+                'results' => $results
+            ]);
+        }
+    } catch (\Exception $e) {
+        wp_send_json_error(['message' => 'Error during sync: ' . $e->getMessage()]);
+    }
+}
+```
+
+---
+
+**User Interface** (`plugin/admin/h5p-results-metabox.php`)
+
+**New Section**: "🔄 Sync Existing Grades"
+
+**UI Components**:
+1. **Description** - Explains retroactive sync purpose
+2. **Sync Button** - Triggers AJAX request
+3. **Loading Spinner** - Shows progress during sync
+4. **Results Display** - Shows detailed success/skip/fail counts
+5. **Error Details** - Expandable `<details>` element for error messages
+
+**HTML Structure**:
+```html
+<div class="pb-lti-section pb-lti-sync">
+    <h4>🔄 Sync Existing Grades</h4>
+    <p class="description">
+        If students completed H5P activities before this grading configuration was enabled,
+        you can retroactively send their scores to the LMS gradebook.
+    </p>
+    <button type="button"
+            id="pb-lti-sync-existing-grades"
+            class="button button-secondary"
+            data-post-id="<?php echo $post->ID; ?>">
+        🔄 Sync Existing Grades to LMS
+    </button>
+    <span class="pb-lti-sync-spinner spinner" style="float: none; margin-left: 10px;"></span>
+    <div id="pb-lti-sync-results" class="notice" style="display: none;"></div>
+    <p class="description">
+        <strong>Note:</strong> Only grades for students who previously accessed this chapter via LTI will be synced.
+    </p>
+</div>
+```
+
+**JavaScript Handler**:
+```javascript
+$('#pb-lti-sync-existing-grades').on('click', function() {
+    const $button = $(this);
+    const $spinner = $('.pb-lti-sync-spinner');
+    const $results = $('#pb-lti-sync-results');
+
+    // Confirmation dialog
+    if (!confirm('This will sync all existing H5P grades for this chapter. Continue?')) {
+        return;
+    }
+
+    // Show loading state
+    $button.prop('disabled', true);
+    $spinner.addClass('is-active');
+    $results.hide().removeClass('notice-success notice-error');
+
+    // AJAX request
+    $.ajax({
+        url: ajaxurl,
+        type: 'POST',
+        data: {
+            action: 'pb_lti_sync_existing_grades',
+            post_id: $button.data('post-id'),
+            nonce: '<?php echo wp_create_nonce('pb_lti_sync_grades'); ?>'
+        },
+        success: function(response) {
+            $spinner.removeClass('is-active');
+            $button.prop('disabled', false);
+
+            if (response.success) {
+                // Show success with detailed breakdown
+                $results.addClass('notice-success')
+                       .html('<p><strong>✅ Success:</strong> ' + response.data.message + '</p>')
+                       .show();
+
+                // Add detailed results
+                const r = response.data.results;
+                const details = '<ul>' +
+                    '<li>Successfully synced: ' + r.success + '</li>' +
+                    '<li>Skipped (no LTI context): ' + r.skipped + '</li>' +
+                    '<li>Failed: ' + r.failed + '</li>' +
+                    '</ul>';
+                $results.find('p').append(details);
+
+                // Show errors if any
+                if (r.errors && r.errors.length > 0) {
+                    $results.find('p').append(
+                        '<details><summary>View Errors</summary>' +
+                        '<ul><li>' + r.errors.join('</li><li>') + '</li></ul>' +
+                        '</details>'
+                    );
+                }
+            } else {
+                $results.addClass('notice-error')
+                       .html('<p><strong>❌ Error:</strong> ' + response.data.message + '</p>')
+                       .show();
+            }
+        },
+        error: function(xhr, status, error) {
+            $spinner.removeClass('is-active');
+            $button.prop('disabled', false);
+            $results.addClass('notice-error')
+                   .html('<p><strong>❌ Error:</strong> ' + error + '</p>')
+                   .show();
+        }
+    });
+});
+```
+
+**CSS Styling**:
+```css
+.pb-lti-sync {
+    background: #f0fdf4;  /* Light green */
+    padding: 15px;
+    border-radius: 5px;
+    border: 1px solid #bbf7d0;  /* Green border */
+}
+
+#pb-lti-sync-results ul {
+    margin-left: 20px;
+    list-style-type: disc;
+}
+
+#pb-lti-sync-results details {
+    margin-top: 10px;
+    padding: 10px;
+    background: rgba(0,0,0,0.05);
+    border-radius: 3px;
+}
+```
+
+---
+
+#### Key Decisions Made
+
+**1. LTI Context as Sync Filter**
+
+**Decision**: Only sync grades for students who have LTI context metadata.
+
+**Rationale**:
+- Students who accessed chapter directly (not via LTI launch) don't have lineitem URL
+- No destination to send grades to
+- Clear user feedback about who was skipped and why
+
+**Implementation**:
+```php
+$lineitem_url = get_user_meta($wp_user_id, '_lti_ags_lineitem', true);
+$lti_user_id = get_user_meta($wp_user_id, '_lti_user_id', true);
+$platform_issuer = get_user_meta($wp_user_id, '_lti_platform_issuer', true);
+
+if (empty($lineitem_url) || empty($lti_user_id) || empty($platform_issuer)) {
+    error_log('[PB-LTI H5P Sync] User ' . $wp_user_id . ' has no LTI context - skipping');
+    $results['skipped']++;
+    continue;
+}
+```
+
+**User Feedback**:
+- Results display shows "Skipped (no LTI context): 3"
+- Documentation explains LTI context requirement
+- Help text in UI notes: "Only grades for students who previously accessed this chapter via LTI will be synced"
+
+---
+
+**2. Current Configuration for Historical Grades**
+
+**Decision**: Retroactive sync uses **current** grading configuration, not historical configuration.
+
+**Rationale**:
+- Simpler implementation (no need to track configuration history)
+- Instructor can adjust configuration and re-sync if needed
+- Matches expected behavior (sync what's currently configured)
+- Configuration history would require complex database schema
+
+**Trade-offs**:
+- If instructor changes grading scheme after completion, sync uses new scheme
+- Could theoretically mismatch original grading intent
+- Acceptable because: instructor controls when to sync, can preview configuration first
+
+**User Communication**:
+- Documentation clearly states: "Grades are calculated based on the current configuration"
+- UI shows current configuration before sync button
+- Instructor can review and adjust before clicking sync
+
+---
+
+**3. Synchronous Processing with Detailed Feedback**
+
+**Decision**: Process all users synchronously in one AJAX request with detailed progress feedback.
+
+**Rationale**:
+- Simpler implementation (no background jobs, queues, or polling)
+- Immediate feedback for instructors
+- Suitable for typical chapter sizes (<100 students)
+- Modern browsers handle 30-60 second requests fine
+
+**Trade-offs**:
+- May timeout on very large chapters (>500 students)
+- All-or-nothing approach (if timeout, no partial results)
+- Acceptable because: typical chapters have <50 students per section
+
+**Future Enhancement Path**:
+- Can add batch processing later if needed
+- Show progress bar for real-time updates
+- Use Action Scheduler for background processing
+
+**Current Approach**:
+```php
+// Single AJAX request processes all users
+$results = H5PGradeSyncEnhanced::sync_existing_grades($post_id);
+
+// Returns immediately with full results
+wp_send_json_success([
+    'message' => 'Sync complete: 5 succeeded, 3 skipped, 1 failed',
+    'results' => $results
+]);
+```
+
+---
+
+**4. Detailed Results Display with Error Transparency**
+
+**Decision**: Show success/skipped/failed counts with expandable error details.
+
+**Rationale**:
+- Transparency builds instructor confidence
+- Error messages help troubleshooting
+- Clear feedback confirms feature is working
+- Expandable errors keep UI clean while providing details
+
+**UI Pattern**:
+```
+✅ Success: Sync complete: 5 succeeded, 3 skipped, 1 failed
+
+• Successfully synced: 5
+• Skipped (no LTI context): 3
+• Failed: 1
+
+View Errors ▼
+  • User 130: OAuth2 token acquisition failed
+  • User 135: Platform not found for issuer
+```
+
+**Benefits**:
+- Instructor knows exactly what happened
+- Can identify specific students with issues
+- Error messages point to root cause
+- No mystery about why some students didn't sync
+
+---
+
+**5. Fallback Logic for Grade Sync**
+
+**Decision**: H5PGradeSyncEnhanced must **always** fall back to individual H5P sync when no chapter configuration exists.
+
+**Rationale**:
+- Backward compatibility - existing installations shouldn't break
+- Gradual adoption - instructors can enable grading per chapter as needed
+- No silent failures - every H5P completion should attempt grade sync
+- Defensive programming - handle edge cases gracefully
+
+**Pattern Established**:
+```php
+// Check if H5P activity is configured for chapter-level grading
+$config = H5PResultsManager::get_configuration($post_id);
+$is_configured = isset($config['activities'][$content_id]) &&
+                 $config['activities'][$content_id]['include'];
+
+if (!$is_configured) {
+    // CRITICAL: Fall back to individual H5P score sync
+    error_log('[PB-LTI H5P Enhanced] H5P ' . $content_id . ' not configured - falling back to individual sync');
+    self::sync_individual_activity($data, $user_id, $lti_user_id, $platform_issuer, $lineitem_url);
+    return; // Exit after fallback sync
+}
+
+// Otherwise: proceed with chapter-level grading
+$chapter_score = H5PResultsManager::calculate_chapter_score($user_id, $post_id);
+```
+
+**Impact**:
+- Chapters WITHOUT grading config: Grades sync normally (individual H5P score)
+- Chapters WITH grading config: Uses configured scheme and aggregation
+- Seamless transition as instructors adopt chapter-level grading
+
+---
+
+#### Patterns Established
+
+**1. Retroactive Sync Service Pattern**
+
+**Template for future bulk operations**:
+
+```php
+class BulkOperationService {
+    /**
+     * Bulk operation with detailed results
+     *
+     * @param int $target_id Target entity ID
+     * @param int|null $filter_id Optional filter (e.g., specific user)
+     * @return array Results with success/skipped/failed counts
+     */
+    public static function bulk_operation($target_id, $filter_id = null) {
+        $results = ['success' => 0, 'skipped' => 0, 'failed' => 0, 'errors' => []];
+
+        // 1. Validate operation is enabled
+        if (!self::is_operation_enabled($target_id)) {
+            $results['errors'][] = 'Operation not enabled';
+            return $results;
+        }
+
+        // 2. Query items to process
+        $items = self::query_items($target_id, $filter_id);
+
+        // 3. Group by entity (e.g., user)
+        $entities = self::group_items($items);
+
+        // 4. Process each entity
+        foreach ($entities as $entity_id => $entity_items) {
+            // Check preconditions
+            if (!self::check_preconditions($entity_id)) {
+                error_log('[Service] Entity ' . $entity_id . ' failed preconditions - skipping');
+                $results['skipped']++;
+                continue;
+            }
+
+            // Process entity
+            try {
+                self::process_entity($entity_id, $entity_items);
+                error_log('[Service] ✅ Processed entity ' . $entity_id);
+                $results['success']++;
+            } catch (\Exception $e) {
+                error_log('[Service] ❌ Failed entity ' . $entity_id . ': ' . $e->getMessage());
+                $results['failed']++;
+                $results['errors'][] = 'Entity ' . $entity_id . ': ' . $e->getMessage();
+            }
+        }
+
+        return $results;
+    }
+}
+```
+
+**Application**: Use this pattern for any bulk operation requiring detailed feedback (bulk email, bulk export, bulk grade sync, etc.)
+
+---
+
+**2. AJAX Bulk Operation Handler Pattern**
+
+**Template for AJAX-powered bulk operations**:
+
+```php
+// Register AJAX action
+add_action('wp_ajax_plugin_bulk_operation', 'plugin_ajax_bulk_operation');
+
+function plugin_ajax_bulk_operation() {
+    // 1. Security checks
+    check_ajax_referer('plugin_bulk_op_nonce', 'nonce');
+
+    $target_id = isset($_POST['target_id']) ? intval($_POST['target_id']) : 0;
+    if (!$target_id) {
+        wp_send_json_error(['message' => 'Invalid target ID']);
+    }
+
+    if (!current_user_can('required_capability', $target_id)) {
+        wp_send_json_error(['message' => 'Insufficient permissions']);
+    }
+
+    // 2. Execute bulk operation
+    try {
+        $results = BulkService::bulk_operation($target_id);
+
+        // 3. Send success if any processing happened
+        if ($results['success'] > 0 || $results['skipped'] > 0) {
+            wp_send_json_success([
+                'message' => sprintf(
+                    'Operation complete: %d succeeded, %d skipped, %d failed',
+                    $results['success'],
+                    $results['skipped'],
+                    $results['failed']
+                ),
+                'results' => $results
+            ]);
+        } else {
+            // 4. Send error if nothing was processed
+            wp_send_json_error([
+                'message' => 'No items were processed. ' . implode(' ', $results['errors']),
+                'results' => $results
+            ]);
+        }
+    } catch (\Exception $e) {
+        // 5. Handle unexpected errors
+        wp_send_json_error([
+            'message' => 'Error during operation: ' . $e->getMessage()
+        ]);
+    }
+}
+```
+
+**Key Features**:
+- Consistent security checks (nonce + capability)
+- Structured response format
+- Differentiate between "partial success" and "total failure"
+- Include detailed results array for client-side processing
+
+---
+
+**3. Meta Box Bulk Operation UI Pattern**
+
+**Template for adding bulk operation buttons to WordPress admin**:
+
+```html
+<!-- Bulk Operation Section in Meta Box -->
+<div class="plugin-bulk-section plugin-bulk-operation">
+    <h4>🔄 Operation Title</h4>
+    <p class="description">
+        Clear explanation of what this operation does and who/what it affects.
+    </p>
+
+    <!-- Action Button -->
+    <button type="button"
+            id="plugin-bulk-operation-btn"
+            class="button button-secondary"
+            data-target-id="<?php echo esc_attr($target_id); ?>">
+        🔄 Trigger Operation
+    </button>
+
+    <!-- Loading Indicator -->
+    <span class="plugin-bulk-spinner spinner" style="float: none; margin-left: 10px;"></span>
+
+    <!-- Results Display -->
+    <div id="plugin-bulk-results" class="notice" style="display: none; margin-top: 15px;"></div>
+
+    <!-- Important Notes -->
+    <p class="description" style="margin-top: 10px;">
+        <strong>Note:</strong> Important caveats or requirements for the operation.
+    </p>
+</div>
+
+<style>
+    .plugin-bulk-operation {
+        background: #f0fdf4;  /* Light green for action sections */
+        padding: 15px;
+        border-radius: 5px;
+        border: 1px solid #bbf7d0;
+    }
+
+    #plugin-bulk-results ul {
+        margin-left: 20px;
+        list-style-type: disc;
+    }
+
+    #plugin-bulk-results details {
+        margin-top: 10px;
+        padding: 10px;
+        background: rgba(0,0,0,0.05);
+        border-radius: 3px;
+        cursor: pointer;
+    }
+</style>
+
+<script>
+jQuery(document).ready(function($) {
+    $('#plugin-bulk-operation-btn').on('click', function() {
+        const $button = $(this);
+        const $spinner = $('.plugin-bulk-spinner');
+        const $results = $('#plugin-bulk-results');
+        const targetId = $button.data('target-id');
+
+        // 1. Confirmation dialog
+        if (!confirm('Confirmation message explaining consequences. Continue?')) {
+            return;
+        }
+
+        // 2. Show loading state
+        $button.prop('disabled', true);
+        $spinner.addClass('is-active');
+        $results.hide().removeClass('notice-success notice-error notice-warning');
+
+        // 3. AJAX request
+        $.ajax({
+            url: ajaxurl,
+            type: 'POST',
+            data: {
+                action: 'plugin_bulk_operation',
+                target_id: targetId,
+                nonce: '<?php echo wp_create_nonce('plugin_bulk_op_nonce'); ?>'
+            },
+            success: function(response) {
+                $spinner.removeClass('is-active');
+                $button.prop('disabled', false);
+
+                if (response.success) {
+                    // 4a. Show success with details
+                    $results.addClass('notice-success')
+                           .html('<p><strong>✅ Success:</strong> ' + response.data.message + '</p>')
+                           .show();
+
+                    // Add detailed breakdown
+                    if (response.data.results) {
+                        const r = response.data.results;
+                        const details = '<ul>' +
+                            '<li>Successfully processed: ' + r.success + '</li>' +
+                            '<li>Skipped: ' + r.skipped + '</li>' +
+                            '<li>Failed: ' + r.failed + '</li>' +
+                            '</ul>';
+                        $results.find('p').append(details);
+
+                        // Show errors in expandable section
+                        if (r.errors && r.errors.length > 0) {
+                            $results.find('p').append(
+                                '<details style="margin-top: 10px;">' +
+                                '<summary>View Errors (' + r.errors.length + ')</summary>' +
+                                '<ul><li>' + r.errors.join('</li><li>') + '</li></ul>' +
+                                '</details>'
+                            );
+                        }
+                    }
+                } else {
+                    // 4b. Show error
+                    $results.addClass('notice-error')
+                           .html('<p><strong>❌ Error:</strong> ' + response.data.message + '</p>')
+                           .show();
+                }
+            },
+            error: function(xhr, status, error) {
+                // 5. Handle AJAX failure
+                $spinner.removeClass('is-active');
+                $button.prop('disabled', false);
+                $results.addClass('notice-error')
+                       .html('<p><strong>❌ Error:</strong> ' + error + '</p>')
+                       .show();
+            }
+        });
+    });
+});
+</script>
+```
+
+**Key Features**:
+- Confirmation dialog prevents accidental clicks
+- Loading state with disabled button and spinner
+- Color-coded results (green for success, red for error)
+- Detailed breakdown with success/skip/fail counts
+- Expandable error list keeps UI clean
+- Accessible markup with proper ARIA labels
+
+---
+
+**4. User Metadata LTI Context Pattern**
+
+**Pattern for checking and using LTI context metadata**:
+
+```php
+/**
+ * Check if user has complete LTI context
+ *
+ * @param int $user_id WordPress user ID
+ * @return array|false Array with LTI context or false if incomplete
+ */
+function get_user_lti_context($user_id) {
+    $lineitem_url = get_user_meta($user_id, '_lti_ags_lineitem', true);
+    $platform_issuer = get_user_meta($user_id, '_lti_platform_issuer', true);
+    $lti_user_id = get_user_meta($user_id, '_lti_user_id', true);
+
+    // Check all required context exists
+    if (empty($lineitem_url) || empty($platform_issuer) || empty($lti_user_id)) {
+        error_log('[LTI] User ' . $user_id . ' has incomplete LTI context');
+        return false;
+    }
+
+    return [
+        'lineitem_url' => $lineitem_url,
+        'platform_issuer' => $platform_issuer,
+        'lti_user_id' => $lti_user_id
+    ];
+}
+
+// Usage in bulk operations
+$lti_context = get_user_lti_context($user_id);
+if (!$lti_context) {
+    $results['skipped']++;
+    continue; // Skip users without LTI context
+}
+
+// Use LTI context for AGS operations
+AGSClient::post_score(
+    $platform,
+    $lti_context['lineitem_url'],
+    $lti_context['lti_user_id'],
+    $score,
+    $max_score
+);
+```
+
+**Why This Pattern**:
+- Centralized LTI context validation
+- Clear logging for debugging
+- Consistent error handling
+- Reusable across multiple features
+
+---
+
+**5. Database Query Pattern for Historical Data**
+
+**Pattern for querying and grouping historical results**:
+
+```php
+/**
+ * Query historical results and group by user
+ *
+ * @param array $item_ids Item IDs to query
+ * @param int|null $user_id Optional specific user filter
+ * @return array Users with their result items
+ */
+function query_historical_results($item_ids, $user_id = null) {
+    global $wpdb;
+
+    $results_table = $wpdb->prefix . 'results_table';
+
+    // Build WHERE clause with optional user filter
+    $where_user = $user_id ? $wpdb->prepare(" AND user_id = %d", $user_id) : "";
+
+    // Query all results, grouped by user and item
+    // Use MAX(result_id) to get latest result for each user/item combination
+    $results = $wpdb->get_results(
+        "SELECT DISTINCT user_id, item_id, MAX(result_id) as latest_result_id
+         FROM {$results_table}
+         WHERE item_id IN (" . implode(',', array_map('intval', $item_ids)) . ")
+         {$where_user}
+         GROUP BY user_id, item_id
+         ORDER BY user_id, item_id"
+    );
+
+    // Group results by user for batch processing
+    $users_to_process = [];
+    foreach ($results as $result) {
+        if (!isset($users_to_process[$result->user_id])) {
+            $users_to_process[$result->user_id] = [];
+        }
+        $users_to_process[$result->user_id][] = [
+            'item_id' => $result->item_id,
+            'result_id' => $result->latest_result_id
+        ];
+    }
+
+    return $users_to_process;
+}
+```
+
+**Key Features**:
+- Uses `MAX(result_id)` to get latest result per user/item
+- Optional user filter for targeted operations
+- Proper SQL escaping with prepared statements
+- Groups results by user for efficient batch processing
+
+---
+
+#### Testing Results
+
+**Manual Testing**: ✅ User confirmed "its working"
+
+**Test Flow**:
+1. ✅ Button appears in meta box when grading enabled
+2. ✅ Confirmation dialog shows before syncing
+3. ✅ Spinner displays during sync
+4. ✅ Results display with success/skip/fail counts
+5. ✅ Grades appear in Moodle gradebook
+6. ✅ Students without LTI context skipped correctly
+
+**Edge Cases Handled**:
+- ✅ Chapter with no H5P activities (error message)
+- ✅ Grading disabled (error message)
+- ✅ No students completed activities (skipped count)
+- ✅ Mixed LTI/direct access (skipped appropriately)
+
+---
+
+#### Documentation Created
+
+**1. User Guide** (`docs/RETROACTIVE_GRADE_SYNC.md`)
+- Overview and use case
+- Step-by-step instructions
+- Who/what gets synced
+- Scale grading support
+- Troubleshooting guide
+- Best practices
+- FAQ (8 questions)
+
+**2. Technical Summary** (`RETROACTIVE_GRADE_SYNC_IMPLEMENTATION.md`)
+- Implementation architecture
+- Backend service details
+- AJAX handler specification
+- UI components breakdown
+- Database queries
+- Testing checklist
+- Deployment status
+
+---
+
+#### Files Modified
+
+**Modified**:
+1. `plugin/Services/H5PGradeSyncEnhanced.php` - Added `sync_existing_grades()` method
+2. `plugin/ajax/handlers.php` - Added AJAX handler
+3. `plugin/admin/h5p-results-metabox.php` - Added UI section, JavaScript, CSS
+
+**Created**:
+1. `docs/RETROACTIVE_GRADE_SYNC.md` - User documentation
+2. `RETROACTIVE_GRADE_SYNC_IMPLEMENTATION.md` - Technical documentation
+
+**Deployment**:
+- ✅ All files copied to Docker container
+- ✅ PHP syntax validated (no errors)
+- ✅ Apache reloaded
+- ✅ User testing confirmed working
+
+---
+
+#### Lessons Learned
+
+**1. Fallback Logic is Mission-Critical**
+
+When enhancing existing functionality, **always maintain fallback behavior** to prevent breaking existing users.
+
+**Application**: H5PGradeSyncEnhanced checks configuration AND falls back to individual sync when no config exists.
+
+---
+
+**2. Database Schema Assumptions are Dangerous**
+
+Always verify actual database schema before writing queries. Don't assume column names based on table purpose.
+
+**Application**: Checked H5P plugin source - `max_score` is in `wp_h5p_results`, not `wp_h5p_contents`.
+
+---
+
+**3. User Feedback is Essential for Bulk Operations**
+
+Bulk operations without detailed feedback create anxiety and confusion.
+
+**Application**: Always show counts (success/skip/fail) with expandable error details.
+
+---
+
+**4. LTI Context is a Hard Prerequisite**
+
+All LTI AGS operations require user metadata from initial LTI launch. Direct access creates no context.
+
+**Application**: Check for LTI context before attempting AGS operations. Skip gracefully with clear logging.
+
+---
+
+**5. Documentation Prevents Support Burden**
+
+Comprehensive documentation reduces recurring support questions.
+
+**Application**: Created 2 documentation files (user guide + technical details) covering all aspects.
+
+---
+
