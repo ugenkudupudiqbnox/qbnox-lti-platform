@@ -9,8 +9,8 @@
 
 ![License](https://img.shields.io/badge/license-MIT-red)
 ![LTI](https://img.shields.io/badge/LTI-1.3-orange)
-![Open Source](https://img.shields.io/badge/Open%20Source-Yes-red)![License](https://img.shields.io/badge/license-MIT-green) 
- ![Pressbooks](https://img.shields.io/badge/Pressbooks-Bedrock-orange)
+![Open Source](https://img.shields.io/badge/Open%20Source-Yes-red)
+![Pressbooks](https://img.shields.io/badge/Pressbooks-Bedrock-orange)
 ![Moodle](https://img.shields.io/badge/Tested%20with-Moodle-success)
 
 > **⚠️ Important Notice**
