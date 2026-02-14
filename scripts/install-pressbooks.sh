@@ -13,7 +13,7 @@ err()  { echo -e "❌ $*" >&2; }
 # Defaults (CI-safe)
 #############################################
 DB_CONTAINER="${DB_CONTAINER:-mysql}"
-WP_CONTAINER="${WP_CONTAINER:-wordpress}"
+WP_CONTAINER="${WP_CONTAINER:-pressbooks}"
 
 DB_NAME="${DB_NAME:-pressbooks}"
 DB_USER="${DB_USER:-root}"
