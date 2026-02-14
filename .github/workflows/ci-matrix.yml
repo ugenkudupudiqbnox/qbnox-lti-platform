@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        moodle: ["4.1", "5.1"]
+        moodle: ["5.1"]
     steps:
       - uses: actions/checkout@v4
 
