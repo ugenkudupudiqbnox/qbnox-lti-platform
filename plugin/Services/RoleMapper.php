@@ -143,7 +143,15 @@ class RoleMapper {
         $user = get_user_by('id', $user_id);
         $user->set_role($wp_role);
         wp_set_current_user($user->ID);
-        wp_set_auth_cookie($user->ID);
+
+        // Set auth cookie with "remember me" for LTI contexts (14 days)
+        // This is CRITICAL for embedded contexts where session cookies might not work
+        $remember = true;  // 14 days instead of session-only
+        $secure = is_ssl(); // Use secure cookies if on HTTPS
+
+        wp_set_auth_cookie($user->ID, $remember, $secure);
+
+        error_log('[PB-LTI RoleMapper] Set auth cookie for user ' . $user->ID . ' (remember: ' . ($remember ? 'yes' : 'no') . ', secure: ' . ($secure ? 'yes' : 'no') . ')');
 
         return $user->ID;
     }

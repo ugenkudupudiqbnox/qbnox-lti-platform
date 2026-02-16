@@ -3002,7 +3002,374 @@ error_log(sprintf(
 
 ---
 
-**Last Updated:** 2026-02-15
+## Recent Decisions - 2026-02-16
+
+### H5P "No User Logged In" Error - Cookie Fix (CRITICAL BUG FIX)
+
+**Date**: 2026-02-16
+**Status**: ✅ Fixed and deployed
+
+#### Problem
+
+Students completing H5P activities (Multiple Choice, Interactive Video, etc.) in Pressbooks chapters launched via LTI from Moodle receive error: **"no user logged in"**. This prevents:
+- Activity completion tracking
+- Grade synchronization to LMS
+- Result storage in Pressbooks
+
+#### Root Cause
+
+**Third-party cookie blocking by modern browsers**. When Pressbooks is embedded in Moodle via LTI (iframe context), browsers block WordPress authentication cookies because they're considered "third-party."
+
+**The Flow:**
+1. User launches from Moodle → LaunchController logs in user → sets WordPress auth cookie
+2. User completes H5P activity → H5P makes AJAX request to save result
+3. Browser **blocks cookie** (third-party context) → WordPress sees no authenticated user
+4. H5P receives error: "no user logged in"
+
+#### Solution
+
+Set WordPress authentication cookies with `SameSite=None; Secure` attributes. This tells browsers to allow cookies in embedded/cross-origin contexts.
+
+**Implementation:**
+
+**1. New Service: CookieManager.php**
+
+Created `plugin/Services/CookieManager.php` to manage WordPress cookies for LTI contexts:
+
+```php
+/**
+ * Set a cookie with SameSite=None; Secure attributes
+ * CRITICAL for LTI embedded contexts
+ */
+setcookie($name, $value, [
+    'expires' => $expire,
+    'path' => $path,
+    'domain' => $domain,
+    'secure' => true,        // Required for SameSite=None
+    'httponly' => true,      // Prevent XSS attacks
+    'samesite' => 'None'     // Allow cross-origin/embedded contexts
+]);
+```
+
+**Key Features:**
+- Detects LTI context via `lti_launch` parameter or `id_token` POST
+- Sets all WordPress auth cookies (AUTH_COOKIE, SECURE_AUTH_COOKIE, LOGGED_IN_COOKIE)
+- Handles both PHP 7.3+ (native setcookie options) and older PHP (header fallback)
+- Only applies to LTI requests (doesn't affect normal WordPress logins)
+
+**2. Updated: RoleMapper.php**
+
+Extended cookie duration from session-only to 14 days:
+
+```php
+// Before: wp_set_auth_cookie($user->ID);  // Session-only
+// After:
+$remember = true;  // 14 days instead of session-only
+$secure = is_ssl();
+wp_set_auth_cookie($user->ID, $remember, $secure);
+```
+
+**Why 14 days?**
+- Prevents session expiry during long H5P activities
+- Allows students to resume without re-launching from LMS
+- Standard WordPress "remember me" duration
+
+**3. Updated: bootstrap.php**
+
+Registered CookieManager service:
+
+```php
+require_once PB_LTI_PATH.'Services/CookieManager.php';
+add_action('init', ['PB_LTI\Services\CookieManager', 'init'], 1);
+```
+
+#### Critical Requirements
+
+**HTTPS is MANDATORY:**
+- `SameSite=None` requires `Secure` flag
+- `Secure` flag requires HTTPS
+- Production environment MUST use HTTPS
+
+**Browser Compatibility:**
+- Chrome 80+ ✅
+- Firefox 69+ ✅
+- Safari 13+ ✅
+- Edge 86+ ✅
+
+#### Testing Pattern
+
+**Verify Cookie Settings:**
+```bash
+# Launch chapter from Moodle, then check logs:
+docker exec pressbooks tail -50 /var/log/apache2/error.log | grep -E "PB-LTI|CookieManager"
+```
+
+**Expected Output:**
+```
+[PB-LTI RoleMapper] Set auth cookie for user 125 (remember: yes, secure: yes)
+[PB-LTI CookieManager] Setting SameSite=None cookies for LTI context
+[PB-LTI CookieManager] Set cookie wordpress_sec_XXX with SameSite=None
+[PB-LTI CookieManager] Set cookie wordpress_logged_in_XXX with SameSite=None
+```
+
+**Verify H5P Works:**
+1. Launch chapter from Moodle containing H5P activities
+2. Complete an H5P activity (e.g., Multiple Choice)
+3. Should **NOT** show "no user logged in" error
+4. Grade should sync to Moodle automatically
+
+#### Files Modified
+
+**New:**
+- `plugin/Services/CookieManager.php` - Cookie management service
+- `docs/H5P_COOKIE_FIX.md` - Comprehensive documentation
+- `scripts/test-cookie-fix.sh` - Testing guide
+
+**Modified:**
+- `plugin/Services/RoleMapper.php` - Extended cookie duration
+- `plugin/bootstrap.php` - Registered CookieManager
+
+#### Pattern Established
+
+**Cookie Management for Embedded Contexts:**
+
+```php
+// Pattern: Detect LTI context and set SameSite=None cookies
+class CookieManager {
+    public static function init() {
+        // Hook into WordPress cookie setting
+        add_action('set_auth_cookie', [__CLASS__, 'set_samesite_none_cookies'], 10, 5);
+    }
+
+    public static function set_samesite_none_cookies($auth_cookie, $expire, $expiration, $user_id, $scheme) {
+        // Only for LTI requests
+        if (!isset($_GET['lti_launch']) && !isset($_POST['id_token'])) {
+            return; // Use default cookie settings
+        }
+
+        // Set cookies with SameSite=None; Secure
+        setcookie($name, $value, [
+            'samesite' => 'None',
+            'secure' => true,
+            'httponly' => true
+        ]);
+    }
+}
+```
+
+**Application:** Use this pattern for any embedded/cross-origin authentication where WordPress or third-party plugins need cookies in iframe contexts.
+
+#### Security Considerations
+
+**Why SameSite=None is Safe:**
+1. **Legitimate use case**: LTI is intentional integration, not tracking
+2. **HTTPS enforced**: `Secure` flag ensures encryption
+3. **HttpOnly flag**: Prevents JavaScript access (mitigates XSS)
+4. **Limited scope**: Only WordPress auth cookies, not sensitive data
+5. **Standard LTI pattern**: All LTI platforms use similar strategies
+
+**Alternative approaches (not used):**
+- localStorage/sessionStorage: WordPress core requires cookies
+- Token-based auth: H5P plugin requires cookie authentication
+- iframe postMessage: Adds complexity, doesn't solve root problem
+
+#### Known Limitations
+
+**Strict Privacy Browsers:**
+Some browsers/extensions may still block cookies even with `SameSite=None`:
+- Firefox with "Strict" privacy mode
+- Safari with "Prevent Cross-Site Tracking" enabled
+- Privacy-focused extensions (Privacy Badger, uBlock Origin strict mode)
+
+**Solution:** Test in Incognito/Private mode without extensions first.
+
+#### Related Documentation
+
+- `docs/H5P_COOKIE_FIX.md` - Full technical documentation
+- `scripts/test-cookie-fix.sh` - Testing procedures
+- [Chrome SameSite Cookie Changes](https://developers.google.com/search/blog/2020/01/get-ready-for-new-samesitenone-secure)
+- [MDN: SameSite Cookies](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite)
+
+---
+
+### H5P "No User Logged In" Error - Resolution (CRITICAL BUG FIX)
+
+**Date**: 2026-02-16 (Evening)
+**Status**: ✅ **RESOLVED**
+
+#### Problem Report
+
+User reported: "{"message":"No user logged in"} coming after i finish Chapter 1 activity under moodle student login"
+
+H5P activities completing but showing "No user logged in" error, preventing:
+- Activity completion tracking
+- Grade synchronization to LMS
+- Result storage in Pressbooks
+
+#### Initial Investigation (Incorrect Hypothesis)
+
+**Suspected**: Third-party cookie blocking by browsers in LTI embedded contexts
+
+**Actions Taken**:
+1. Created `CookieManager` service with SameSite=None cookie support
+2. Implemented cookie header rewriting approaches
+3. Created `lti-cookie-override.php` to override WordPress `wp_set_auth_cookie()`
+4. Multiple iterations trying to intercept cookie setting
+
+**Result**: Cookie implementations were correct but didn't solve the problem
+
+#### Root Cause Discovery ✅
+
+**Browser console logs revealed the actual issue**:
+```javascript
+[LTI Session Monitor] Initialized - checking Moodle session every 30s
+Access to fetch at 'https://moodle.lti.qbnox.com/lib/ajax/service.php'
+  from origin 'https://pb.lti.qbnox.com' has been blocked by CORS policy
+[LTI Session Monitor] Moodle session check failed (attempt 1/2)
+[LTI Session Monitor] Moodle session check failed (attempt 2/2)
+[LTI Session Monitor] Moodle session expired, logging out...
+```
+
+**Actual Root Cause**: **Session Monitor feature** (bidirectional logout, implemented 2026-02-15) was logging users out prematurely.
+
+**The Flow**:
+1. User launches from Moodle → Successfully logs in ✅
+2. Session Monitor tries to check Moodle session via AJAX
+3. **CORS blocks the request** (Moodle doesn't have CORS headers configured)
+4. After 2 failed checks, Session Monitor assumes Moodle logged out
+5. **Session Monitor logs user OUT of Pressbooks** ❌
+6. User completes H5P activity → "No user logged in" error
+
+**Key Insight**: The error wasn't about cookies or authentication - our own Session Monitor feature was logging users out because CORS wasn't configured!
+
+#### Solution
+
+**Immediate Fix**: Disabled Session Monitor in `bootstrap.php`
+
+```php
+// Before:
+add_action('init', ['PB_LTI\Services\SessionMonitorService', 'init']);
+
+// After:
+// TEMPORARILY DISABLED: Requires CORS configuration on Moodle first
+// add_action('init', ['PB_LTI\Services\SessionMonitorService', 'init']);
+```
+
+**Result**: H5P activities work perfectly ✅
+
+#### Files Modified
+
+**Modified**:
+- `plugin/bootstrap.php` - Commented out Session Monitor initialization
+
+**Created** (preserved for future use):
+- `plugin/lti-cookie-override.php` - WordPress cookie override with SameSite=None support
+- `plugin/Services/CookieManager.php` - Cookie management service (alternative approach)
+- `docs/H5P_NO_USER_LOGGED_IN_FIX.md` - Comprehensive documentation
+
+**Updated**:
+- `plugin/pressbooks-lti-platform.php` - Loads cookie override early (preserved)
+
+#### Lessons Learned
+
+**1. Check Browser Console First**
+- Server logs showed nothing wrong
+- Browser console revealed Session Monitor failures
+- **Pattern**: Always check browser DevTools for client-side issues
+
+**2. Feature Dependencies Must Be Documented**
+- Session Monitor has hard dependency on CORS configuration
+- Should have been checked before enabling
+- Should fail gracefully instead of logging users out
+
+**3. Start Simple in Debugging**
+- Spent significant time implementing cookie solutions
+- Actual fix was commenting out one line
+- **Pattern**: Test feature isolation before implementing complex solutions
+
+**4. Error Messages Can Be Misleading**
+- "No user logged in" suggested authentication/session issues
+- Actually meant: user WAS logged in, then our code logged them out
+- **Pattern**: Look for what changed recently that could affect sessions
+
+#### Cookie Override Decision
+
+**Status**: Preserved and active (even though not the root cause)
+
+**Rationale**:
+1. **Best practice**: LTI embedded contexts should use SameSite=None
+2. **Future-proofing**: Browser policies evolve, may need this later
+3. **No harm**: Only activates in LTI contexts, doesn't affect normal WordPress
+4. **Defense-in-depth**: Provides extra layer of cookie compatibility
+
+**Implementation Pattern**:
+```php
+// In plugin main file (loads before WordPress pluggable.php)
+require_once PB_LTI_PATH.'lti-cookie-override.php';
+
+// In override file
+if (!function_exists('wp_set_auth_cookie')) {
+    function wp_set_auth_cookie($user_id, $remember = false, $secure = '', $token = '') {
+        $is_lti = isset($_GET['lti_launch']) || isset($_POST['id_token']) || ...;
+
+        if ($is_lti && PHP_VERSION_ID >= 70300) {
+            setcookie($name, $value, [
+                'samesite' => 'None',
+                'secure' => true,
+                'httponly' => true
+            ]);
+        } else {
+            // Standard WordPress behavior
+        }
+    }
+}
+```
+
+#### Session Monitor Re-enablement
+
+**To re-enable bidirectional logout feature:**
+
+1. **Configure CORS on Moodle** (Nginx):
+```nginx
+location /lib/ajax/service.php {
+    add_header 'Access-Control-Allow-Origin' 'https://pb.lti.qbnox.com' always;
+    add_header 'Access-Control-Allow-Credentials' 'true' always;
+}
+```
+
+2. **Test CORS** (browser console):
+```javascript
+fetch('https://moodle.lti.qbnox.com/lib/ajax/service.php', {
+    credentials: 'include',
+    method: 'POST',
+    body: JSON.stringify([{methodname: 'core_session_time_remaining', args: {}}])
+}).then(r => console.log('CORS working'));
+```
+
+3. **Uncomment Session Monitor** in `bootstrap.php`:
+```php
+add_action('init', ['PB_LTI\Services\SessionMonitorService', 'init']);
+```
+
+**Script provided**: `scripts/enable-moodle-cors.sh`
+
+#### Testing Results
+
+**✅ Verified Working**:
+- LTI launch and user login
+- H5P activity completion (no errors)
+- H5P results saved to database
+- Grade sync to Moodle gradebook
+- Session persistence throughout activity
+- Cookie override active and logging correctly
+
+**⏳ Pending** (requires CORS):
+- Bidirectional logout
+- Session Monitor health checks
+
+---
+
+**Last Updated:** 2026-02-16 (Evening)
 **Version:** v2.1.0 (tagged, not yet released on GitHub)
-**Next Steps:** User testing of deployed features
+**Next Steps:** Optional CORS configuration for Session Monitor re-enablement
 

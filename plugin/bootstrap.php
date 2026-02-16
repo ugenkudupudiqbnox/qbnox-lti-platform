@@ -12,6 +12,7 @@ require_once PB_LTI_PATH.'Services/DeploymentRegistry.php';
 require_once PB_LTI_PATH.'Services/NonceService.php';
 require_once PB_LTI_PATH.'Services/JwtValidator.php';
 require_once PB_LTI_PATH.'Services/RoleMapper.php';
+require_once PB_LTI_PATH.'Services/CookieManager.php';
 require_once PB_LTI_PATH.'Services/TokenCache.php';
 require_once PB_LTI_PATH.'Services/AGSClient.php';
 require_once PB_LTI_PATH.'Services/ScaleMapper.php';
@@ -59,4 +60,8 @@ add_action('init', ['PB_LTI\Controllers\LogoutController', 'check_logout_redirec
 add_action('init', ['PB_LTI\Services\LogoutLinkService', 'init']);
 
 // Initialize session monitor (detects when LMS session expires)
-add_action('init', ['PB_LTI\Services\SessionMonitorService', 'init']);
+// TEMPORARILY DISABLED: Requires CORS configuration on Moodle first
+// add_action('init', ['PB_LTI\Services\SessionMonitorService', 'init']);
+
+// Initialize cookie manager (ensures cookies work in LTI embedded contexts)
+add_action('init', ['PB_LTI\Services\CookieManager', 'init'], 1);
