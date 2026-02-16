@@ -28,5 +28,9 @@ echo "$PAYLOAD" | grep -q "content_items" || {
   exit 1
 }
 
+if [ -n "$GITHUB_ENV" ]; then
+  echo "JWT=$JWT" >> "$GITHUB_ENV"
+fi
+
 echo "✅ Deep Linking JWT structure valid"
 
