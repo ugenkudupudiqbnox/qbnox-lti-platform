@@ -1,4 +1,3 @@
-
 #!/usr/bin/env bash
 set -e
 
@@ -7,13 +6,16 @@ source "$(dirname "$0")/load-env.sh"
 
 echo "Auto-registering LTI 1.3 tool in Moodle"
 
-MOODLE_CONTAINER=$(docker ps --filter "ancestor=bitnami/moodle" --format "{{.ID}}")
+# Copy the registration script into the container
+sudo docker cp "$(dirname "$0")/moodle-register-tool.php" moodle:/var/www/html/moodle-register-tool.php
 
-docker exec "$MOODLE_CONTAINER" bash -c "
-php admin/tool/lti/cli/create_tool.php \
+# Run the registration script
+sudo docker exec moodle php /var/www/html/moodle-register-tool.php \
   --name='Pressbooks LTI Platform' \
   --baseurl='${PRESSBOOKS_URL}' \
   --initiate_login_url='${PRESSBOOKS_URL}/wp-json/pb-lti/v1/login' \
   --redirect_uri='${PRESSBOOKS_URL}/wp-json/pb-lti/v1/launch' \
   --jwks_url='${PRESSBOOKS_URL}/wp-json/pb-lti/v1/keyset'
-"
+
+# Cleanup
+sudo docker exec moodle rm /var/www/html/moodle-register-tool.php

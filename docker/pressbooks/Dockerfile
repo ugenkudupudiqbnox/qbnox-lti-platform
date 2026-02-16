@@ -27,6 +27,11 @@ RUN curl -sSL https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-c
     -o /usr/local/bin/wp \
     && chmod +x /usr/local/bin/wp
 
+# Set WP-CLI package path and install dotenv command
+ENV WP_CLI_PACKAGES_DIR /root/.wp-cli/packages
+RUN mkdir -p $WP_CLI_PACKAGES_DIR \
+    && composer --working-dir=$WP_CLI_PACKAGES_DIR require aaemnnosttv/wp-cli-dotenv-command:^2.0
+
 # Set working directory
 WORKDIR /var/www/pressbooks
 

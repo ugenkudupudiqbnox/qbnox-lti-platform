@@ -24,27 +24,34 @@ fi
 # Initialize .env if missing
 if [ ! -f .env ]; then
   echo "Initializing .env"
-  wp dotenv init --allow-root || true
-  wp dotenv salts generate --allow-root || true
-
-  wp dotenv set DB_NAME "$DB_NAME" --allow-root
-  wp dotenv set DB_USER "$DB_USER" --allow-root
-  wp dotenv set DB_PASSWORD "$DB_PASSWORD" --allow-root
-  wp dotenv set DB_HOST "$DB_HOST" --allow-root
-
-  wp dotenv set WP_HOME "$WP_HOME" --allow-root
-  wp dotenv set WP_SITEURL "\${WP_HOME}/wp" --allow-root
-  wp dotenv set MULTISITE "true" --allow-root
-  wp dotenv set SUBDOMAIN_INSTALL "false" --allow-root
-  wp dotenv set DOMAIN_CURRENT_SITE "$DOMAIN_CURRENT_SITE" --allow-root
-  wp dotenv set WP_ENV "development" --allow-root
+  cat > .env <<EOF
+DB_NAME=$DB_NAME
+DB_USER=$DB_USER
+DB_PASSWORD=$DB_PASSWORD
+DB_HOST=$DB_HOST
+WP_HOME=$WP_HOME
+WP_SITEURL=\${WP_HOME}/wp
+WP_ENV=development
+EOF
+  
+  # Generate salts
+  wp config shuffle-salts --allow-root || true
 fi
 
+# Ensure basic vars are set/updated in .env
+wp dotenv set DB_NAME "$DB_NAME" --allow-root
+wp dotenv set DB_USER "$DB_USER" --allow-root
+wp dotenv set DB_PASSWORD "$DB_PASSWORD" --allow-root
+wp dotenv set DB_HOST "$DB_HOST" --allow-root
+wp dotenv set WP_HOME "$WP_HOME" --allow-root
+
 # Install multisite if needed
-if ! wp core is-installed --path="$WP_PATH" --allow-root; then
+if ! mysql -h"$DB_HOST" -u"$DB_USER" -p"$DB_PASSWORD" "$DB_NAME" -e "SHOW TABLES LIKE 'wp_users';" | grep -q 'wp_users'; then
   echo "Installing WordPress Multisite"
+  # Temporarily disable MULTISITE in case it's in .env to allow installer to run
+  sed -i 's/^MULTISITE=true/MULTISITE=false/' .env || true
+  
   wp core multisite-install \
-    --path="$WP_PATH" \
     --url="$WP_HOME" \
     --title="Pressbooks Network" \
     --admin_user="$WP_ADMIN_USER" \
@@ -54,8 +61,18 @@ if ! wp core is-installed --path="$WP_PATH" --allow-root; then
     --allow-root
 fi
 
+# Ensure multisite is enabled in .env
+echo "Configuring Multisite environment variables..."
+wp dotenv set MULTISITE true --allow-root
+wp dotenv set WP_ALLOW_MULTISITE true --allow-root
+wp dotenv set SUBDOMAIN_INSTALL false --allow-root
+wp dotenv set DOMAIN_CURRENT_SITE "$DOMAIN_CURRENT_SITE" --allow-root
+wp dotenv set PATH_CURRENT_SITE / --allow-root
+wp dotenv set SITE_ID_CURRENT_SITE 1 --allow-root
+wp dotenv set BLOG_ID_CURRENT_SITE 1 --allow-root
+
 # Network activate Pressbooks
-wp plugin activate pressbooks --network --path="$WP_PATH" --allow-root || true
+wp plugin activate pressbooks --network --url="$WP_HOME" --path="$WP_PATH" --allow-root || true
 
 # Network-enable all Pressbooks themes
 echo "Enabling Pressbooks themes network-wide..."

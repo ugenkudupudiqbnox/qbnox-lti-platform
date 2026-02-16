@@ -4,6 +4,13 @@ set -e
 # Load environment configuration
 source "$(dirname "$0")/load-env.sh"
 
+# Check if SSL is needed
+if [ "$PROTOCOL" = "http" ]; then
+    echo "ℹ️  Protocol is set to http. Skipping SSL/Let's Encrypt setup."
+    echo "   Local domains (${MOODLE_DOMAIN}, ${PRESSBOOKS_DOMAIN}) do not require SSL."
+    exit 0
+fi
+
 echo "🔧 Setting up nginx reverse proxy and Let's Encrypt SSL"
 
 # Check if running as root

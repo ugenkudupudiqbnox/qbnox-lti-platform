@@ -42,6 +42,21 @@ RUN a2enmod rewrite headers ssl
 # Set working directory
 WORKDIR /var/www/html
 
+# Download Moodle
+RUN curl -L https://github.com/moodle/moodle/archive/refs/heads/MOODLE_403_STABLE.tar.gz -o moodle.tar.gz \
+    && tar -xzf moodle.tar.gz --strip-components=1 \
+    && rm moodle.tar.gz \
+    && chown -R www-data:www-data /var/www/html
+
+# Create moodledata directory
+RUN mkdir -p /var/moodledata && chown -R www-data:www-data /var/moodledata
+
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["apache2-foreground"]
+
 # Expose port 80
 EXPOSE 80
 

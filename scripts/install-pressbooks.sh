@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+# Load environment configuration
+source "$(dirname "$0")/load-env.sh"
+
 COMPOSE_FILE="lti-local-lab/docker-compose.yml"
 DB_CONTAINER="mysql"
 WP_CONTAINER="pressbooks"
 
-WP_HOME="${WP_HOME:-http://localhost:8000}"
+WP_HOME="${PRESSBOOKS_URL}"
 WP_TITLE="Pressbooks Network"
 WP_ADMIN_USER="admin"
 WP_ADMIN_PASSWORD="admin"
@@ -26,9 +29,9 @@ retry() {
 }
 
 if command -v docker-compose >/dev/null 2>&1; then
-  DC="docker-compose -f $COMPOSE_FILE"
+  DC="$SUDO_DOCKER docker-compose -f $COMPOSE_FILE"
 else
-  DC="docker compose -f $COMPOSE_FILE"
+  DC="$SUDO_DOCKER docker compose -f $COMPOSE_FILE"
 fi
 
 echo "🚀 Starting Pressbooks (Bedrock-aligned) setup"
@@ -39,10 +42,10 @@ echo "⏳ Waiting for MySQL..."
 retry 15 $DC exec -T "$DB_CONTAINER" mysqladmin ping -h localhost --silent
 
 echo "⏳ Waiting for WordPress..."
-retry 15 $DC exec -T "$WP_CONTAINER" wp --info >/dev/null
+retry 15 $DC exec -T "$WP_CONTAINER" wp --info --url="$WP_HOME" --allow-root >/dev/null
 
 echo "📦 Installing WordPress Multisite..."
-if ! $DC exec -T "$WP_CONTAINER" wp core is-installed --allow-root >/dev/null 2>&1; then
+if ! $DC exec -T "$WP_CONTAINER" wp core is-installed --url="$WP_HOME" --allow-root >/dev/null 2>&1; then
   retry 5 $DC exec -T "$WP_CONTAINER" wp core multisite-install \
     --url="$WP_HOME" \
     --title="$WP_TITLE" \
@@ -73,9 +76,8 @@ RewriteRule . index.php [L]
 # END WordPress
 EOF
 
-echo "🔌 Installing & Network-Activating Pressbooks..."
+echo "🔌 Network-Activating Pressbooks..."
 
-retry 5 $DC exec -T "$WP_CONTAINER" wp plugin install pressbooks --allow-root || true
-retry 5 $DC exec -T "$WP_CONTAINER" wp plugin activate pressbooks --network --allow-root
+retry 5 $DC exec -T "$WP_CONTAINER" wp plugin activate pressbooks --network --url="$WP_HOME" --allow-root
 
 echo "✅ Pressbooks setup complete"

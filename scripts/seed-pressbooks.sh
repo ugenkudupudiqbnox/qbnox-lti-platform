@@ -1,38 +1,38 @@
 #!/usr/bin/env bash
 set -e
 
-PB_CONTAINER=$(docker ps --filter "name=pressbooks" --format "{{.ID}}")
+# Load environment configuration
+source "$(dirname "$0")/load-env.sh"
 
 echo "📘 Seeding Pressbooks with test book"
 
-docker exec "$PB_CONTAINER" bash -c "
-set -e
-cd /var/www/html
+# Use docker compose to run commands
+DC="docker compose -f lti-local-lab/docker-compose.yml"
 
 # Create book site if none exists
-if ! wp site list --allow-root | grep -q '/test-book'; then
-  wp site create \
+if ! sudo -E $DC exec -T pressbooks wp site list --url="$PRESSBOOKS_URL" --allow-root | grep -q 'test-book'; then
+  sudo -E $DC exec -T pressbooks wp site create \
     --slug=test-book \
     --title='LTI Test Book' \
     --email=admin@example.com \
+    --url="$PRESSBOOKS_URL" \
     --allow-root
 fi
 
-# Switch to book context
-BOOK_URL=\$(wp site list --allow-root --field=url | grep test-book)
+# Get book URL
+BOOK_URL="${PRESSBOOKS_URL}/test-book"
 
-wp --url=\$BOOK_URL post create \
-  --post_type=chapter \
-  --post_title='Chapter 1 – Introduction' \
-  --post_status=publish \
-  --allow-root
+echo "📝 Creating test chapters in $BOOK_URL"
 
-wp --url=\$BOOK_URL post create \
-  --post_type=chapter \
-  --post_title='Chapter 2 – LTI Integration' \
-  --post_status=publish \
-  --allow-root
+# Create some chapters
+for i in {1..3}; do
+  sudo -E $DC exec -T pressbooks wp post create \
+    --post_type=chapter \
+    --post_title="Chapter $i - LTI Content" \
+    --post_content="This is chapter $i for LTI testing." \
+    --post_status=publish \
+    --url="$BOOK_URL" \
+    --allow-root
+done
 
-echo '✅ Pressbooks book & chapters created'
-"
-
+echo "✅ Pressbooks book & chapters created"

@@ -41,8 +41,10 @@ make up install-pressbooks install enable-lti seed seed-books test
 ```
 
 ### Test Environment URLs
-- Moodle: `https://moodle.local`
-- Pressbooks: `https://pressbooks.local`
+- Moodle: `http://moodle.local:8080`
+- Pressbooks: `http://pressbooks.local:8081`
+
+**Networking Note**: The setup script `scripts/lab-up.sh` automatically checks and adds these mappings to your `/etc/hosts` file.
 
 ## Code Architecture
 

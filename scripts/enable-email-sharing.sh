@@ -1,16 +1,19 @@
 #!/usr/bin/env bash
 set -e
 
+# Load environment configuration
+source "$(dirname "$0")/load-env.sh"
+
 echo "=== Enabling Email & Name Sharing for LTI Tool ==="
 
-MOODLE_CONTAINER=$(docker ps --filter "name=moodle" --format "{{.Names}}" | head -1)
+MOODLE_CONTAINER=$($SUDO_DOCKER docker ps --filter "name=moodle" --format "{{.Names}}" | head -1)
 
 if [ -z "$MOODLE_CONTAINER" ]; then
     echo "❌ Moodle container not found"
     exit 1
 fi
 
-docker exec mysql mysql -uroot -proot moodle -e "
+$SUDO_DOCKER docker exec mysql mysql -uroot -proot moodle -e "
 UPDATE mdl_lti_types_config
 SET value = '1'
 WHERE typeid = (SELECT id FROM mdl_lti_types WHERE name = 'Pressbooks LTI Platform')

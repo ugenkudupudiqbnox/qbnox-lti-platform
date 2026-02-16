@@ -27,29 +27,10 @@ This guide covers installation for both **developers** (using Docker) and **end 
 ```bash
 # Clone repository
 git clone https://github.com/ugenkudupudiqbnox/qbnox-lti-platform.git
-cd pressbooks-lti-platform
+cd qbnox-lti-platform
 
-# Configure environment
-cp .env.example .env
-nano .env  # Edit domains and settings
-
-# Start services
-docker-compose up -d
-
-# Install Pressbooks
-make install-pressbooks
-
-# Install LTI plugin
-make install
-
-# Configure Moodle integration
-make enable-lti
-
-# Seed test data
-make seed seed-books
-
-# Run tests
-make test
+# Setup the lab with moodle and pressboosk in dockers
+make 
 ```
 
 ### Docker Services
@@ -134,64 +115,8 @@ This section is for users with **existing Moodle and Pressbooks installations**.
 
 ## Plugin Installation
 
-### Option 1: Install via WordPress Admin (Recommended)
 
-1. **Download Plugin**
-   ```bash
-   # Download latest release
-   wget https://github.com/ugenkudupudiqbnox/qbnox-lti-platform/releases/latest/download/pressbooks-lti-platform.zip
-   ```
-
-2. **Upload to Pressbooks**
-   - Log in to Pressbooks Network Admin
-   - Navigate to: **Plugins → Add New → Upload Plugin**
-   - Choose `pressbooks-lti-platform.zip`
-   - Click **Install Now**
-
-3. **Network Activate**
-   - After installation, click **Network Activate**
-   - Or go to: **Network Admin → Plugins**
-   - Click **Network Activate** under "Pressbooks LTI Platform"
-
-### Option 2: Install via FTP/SSH
-
-#### For Bedrock Structure (Recommended)
-
-```bash
-# Navigate to plugins directory
-cd /path/to/pressbooks/web/app/plugins/
-
-# Clone or extract plugin
-git clone https://github.com/ugenkudupudiqbnox/qbnox-lti-platform.git
-# OR
-unzip pressbooks-lti-platform.zip
-
-# Set permissions
-chown -R www-data:www-data pressbooks-lti-platform
-chmod -R 755 pressbooks-lti-platform
-
-# Activate via WP-CLI
-wp plugin activate pressbooks-lti-platform --network --allow-root
-```
-
-#### For Standard WordPress
-
-```bash
-# Navigate to plugins directory
-cd /path/to/wordpress/wp-content/plugins/
-
-# Clone or extract plugin
-git clone https://github.com/ugenkudupudiqbnox/qbnox-lti-platform.git
-
-# Set permissions
-chown -R www-data:www-data pressbooks-lti-platform
-chmod -R 755 pressbooks-lti-platform
-
-# Activate via WP-CLI or admin interface
-wp plugin activate pressbooks-lti-platform --network
-```
-
-### Option 3: Install via Composer (Bedrock Only)
+### Install via Composer (Bedrock Only)
 
 Add to `composer.json`:
 
@@ -204,7 +129,7 @@ Add to `composer.json`:
     }
   ],
   "require": {
-    "your-org/pressbooks-lti-platform": "^1.0"
+    "ugenkudupudiqbnox/qbnox-lti-platform": "v2.1.0"
   }
 }
 ```
