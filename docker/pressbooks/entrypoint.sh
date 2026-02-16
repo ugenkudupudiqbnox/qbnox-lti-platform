@@ -24,20 +24,33 @@ fi
 # Initialize .env if missing
 if [ ! -f .env ]; then
   echo "Initializing .env"
-  wp dotenv init --allow-root || true
-  wp dotenv salts generate --allow-root || true
+  
+  # Generate WordPress salts
+  SALTS=$(curl -sS https://api.wordpress.org/secret-key/1.1/salt/)
+  
+  # Create .env file
+  cat > .env <<ENVEOF
+# Database Configuration
+DB_NAME=${DB_NAME}
+DB_USER=${DB_USER}
+DB_PASSWORD=${DB_PASSWORD}
+DB_HOST=${DB_HOST}
 
-  wp dotenv set DB_NAME "$DB_NAME" --allow-root
-  wp dotenv set DB_USER "$DB_USER" --allow-root
-  wp dotenv set DB_PASSWORD "$DB_PASSWORD" --allow-root
-  wp dotenv set DB_HOST "$DB_HOST" --allow-root
+# WordPress Configuration
+WP_ENV=development
+WP_HOME=${WP_HOME}
+WP_SITEURL=\${WP_HOME}/wp
 
-  wp dotenv set WP_HOME "$WP_HOME" --allow-root
-  wp dotenv set WP_SITEURL "\${WP_HOME}/wp" --allow-root
-  wp dotenv set MULTISITE "true" --allow-root
-  wp dotenv set SUBDOMAIN_INSTALL "false" --allow-root
-  wp dotenv set DOMAIN_CURRENT_SITE "$DOMAIN_CURRENT_SITE" --allow-root
-  wp dotenv set WP_ENV "development" --allow-root
+# Multisite Configuration
+MULTISITE=true
+SUBDOMAIN_INSTALL=false
+DOMAIN_CURRENT_SITE=${DOMAIN_CURRENT_SITE}
+
+# WordPress Salts
+${SALTS}
+ENVEOF
+
+  echo "✓ .env file created"
 fi
 
 # Install multisite if needed
