@@ -25,8 +25,13 @@ fi
 if [ ! -f .env ]; then
   echo "Initializing .env"
   
-  # Generate WordPress salts
-  SALTS=$(curl -sS https://api.wordpress.org/secret-key/1.1/salt/)
+  # Generate WordPress salts and convert from PHP define() to .env format
+  echo "Fetching WordPress salts..."
+  WP_SALTS_RAW=$(curl -sS https://api.wordpress.org/secret-key/1.1/salt/)
+  
+  # Convert: define('KEY', 'value'); -> KEY='value'
+  # Note: Using .* for greedy match to handle special chars in salt values
+  WP_SALTS=$(echo "$WP_SALTS_RAW" | sed -E "s/define\('([^']+)',\s*'(.*)'\);/\1='\2'/g")
   
   # Create .env file
   cat > .env <<ENVEOF
@@ -47,7 +52,7 @@ SUBDOMAIN_INSTALL=false
 DOMAIN_CURRENT_SITE=${DOMAIN_CURRENT_SITE}
 
 # WordPress Salts
-${SALTS}
+${WP_SALTS}
 ENVEOF
 
   echo "✓ .env file created"
