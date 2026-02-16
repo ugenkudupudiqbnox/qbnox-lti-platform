@@ -1,0 +1,72 @@
+version: '3.8'
+
+services:
+  # Selenium Hub
+  selenium-hub:
+    image: selenium/hub:4.18.1
+    container_name: selenium-hub
+    ports:
+      - "4444:4444"
+      - "4442:4442"
+      - "4443:4443"
+    environment:
+      - SE_SESSION_REQUEST_TIMEOUT=300
+      - SE_NODE_SESSION_TIMEOUT=300
+    networks:
+      - selenium-network
+
+  # Chrome Node
+  chrome:
+    image: selenium/node-chrome:4.18.1
+    container_name: selenium-chrome
+    depends_on:
+      - selenium-hub
+    environment:
+      - SE_EVENT_BUS_HOST=selenium-hub
+      - SE_EVENT_BUS_PUBLISH_PORT=4442
+      - SE_EVENT_BUS_SUBSCRIBE_PORT=4443
+      - SE_NODE_MAX_SESSIONS=3
+      - SE_NODE_SESSION_TIMEOUT=300
+    shm_size: 2gb
+    networks:
+      - selenium-network
+
+  # Firefox Node (optional)
+  firefox:
+    image: selenium/node-firefox:4.18.1
+    container_name: selenium-firefox
+    depends_on:
+      - selenium-hub
+    environment:
+      - SE_EVENT_BUS_HOST=selenium-hub
+      - SE_EVENT_BUS_PUBLISH_PORT=4442
+      - SE_EVENT_BUS_SUBSCRIBE_PORT=4443
+      - SE_NODE_MAX_SESSIONS=3
+      - SE_NODE_SESSION_TIMEOUT=300
+    shm_size: 2gb
+    networks:
+      - selenium-network
+
+  # Test Runner
+  test-runner:
+    build:
+      context: .
+      dockerfile: Dockerfile.tests
+    container_name: selenium-test-runner
+    depends_on:
+      - selenium-hub
+    environment:
+      - SELENIUM_GRID_URL=http://selenium-hub:4444/wd/hub
+      - MOODLE_URL=${MOODLE_URL}
+      - PRESSBOOKS_URL=${PRESSBOOKS_URL}
+    volumes:
+      - .:/tests
+      - ./screenshots:/tests/screenshots
+      - ./reports:/tests/reports
+    networks:
+      - selenium-network
+    command: pytest -v --html=reports/report.html --self-contained-html
+
+networks:
+  selenium-network:
+    driver: bridge

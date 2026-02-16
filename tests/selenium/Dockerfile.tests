@@ -1,0 +1,26 @@
+FROM python:3.11-slim
+
+WORKDIR /tests
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    wget \
+    gnupg \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements
+COPY requirements.txt .
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy test files
+COPY . .
+
+# Set environment
+ENV PYTHONPATH=/tests
+ENV PYTEST_ADDOPTS="--verbose --tb=short"
+
+# Default command
+CMD ["pytest", "-v"]

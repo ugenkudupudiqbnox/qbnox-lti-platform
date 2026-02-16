@@ -1,0 +1,166 @@
+name: Selenium UI Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    # Run daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      test_pattern:
+        description: 'Test pattern to run (e.g., test_lti_launch.py or -m smoke)'
+        required: false
+        default: 'test_*.py'
+
+jobs:
+  selenium-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chrome, firefox]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          cd tests/selenium
+          pip install -r requirements.txt
+
+      - name: Create .env file
+        run: |
+          cd tests/selenium
+          cat > .env << EOF
+          MOODLE_URL=${{ secrets.MOODLE_URL }}
+          PRESSBOOKS_URL=${{ secrets.PRESSBOOKS_URL }}
+          MOODLE_ADMIN_USER=${{ secrets.MOODLE_ADMIN_USER }}
+          MOODLE_ADMIN_PASSWORD=${{ secrets.MOODLE_ADMIN_PASSWORD }}
+          MOODLE_STUDENT_USER=${{ secrets.MOODLE_STUDENT_USER }}
+          MOODLE_STUDENT_PASSWORD=${{ secrets.MOODLE_STUDENT_PASSWORD }}
+          MOODLE_INSTRUCTOR_USER=${{ secrets.MOODLE_INSTRUCTOR_USER }}
+          MOODLE_INSTRUCTOR_PASSWORD=${{ secrets.MOODLE_INSTRUCTOR_PASSWORD }}
+          PRESSBOOKS_ADMIN_USER=${{ secrets.PRESSBOOKS_ADMIN_USER }}
+          PRESSBOOKS_ADMIN_PASSWORD=${{ secrets.PRESSBOOKS_ADMIN_PASSWORD }}
+          SELENIUM_HEADLESS=true
+          SELENIUM_BROWSER=${{ matrix.browser }}
+          SCREENSHOT_ON_FAILURE=true
+          EOF
+
+      - name: Create directories
+        run: |
+          cd tests/selenium
+          mkdir -p screenshots reports
+
+      - name: Run Selenium tests
+        id: run_tests
+        run: |
+          cd tests/selenium
+          TEST_PATTERN="${{ github.event.inputs.test_pattern || 'test_*.py' }}"
+          pytest $TEST_PATTERN --html=reports/report.html --self-contained-html
+        continue-on-error: true
+
+      - name: Upload test report
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-report-${{ matrix.browser }}
+          path: tests/selenium/reports/
+          retention-days: 30
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-screenshots-${{ matrix.browser }}
+          path: tests/selenium/screenshots/
+          retention-days: 30
+
+      - name: Comment PR with results
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const reportPath = 'tests/selenium/reports/report.html';
+
+            if (fs.existsSync(reportPath)) {
+              const browser = '${{ matrix.browser }}';
+              const passed = '${{ steps.run_tests.outcome }}' === 'success';
+              const emoji = passed ? '✅' : '❌';
+              const status = passed ? 'PASSED' : 'FAILED';
+
+              const comment = `## ${emoji} Selenium Tests ${status} (${browser})
+
+Browser: \`${browser}\`
+Status: **${status}**
+
+[View detailed report](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+`;
+
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: comment
+              });
+            }
+
+      - name: Fail job if tests failed
+        if: steps.run_tests.outcome != 'success'
+        run: exit 1
+
+  smoke-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          cd tests/selenium
+          pip install -r requirements.txt
+
+      - name: Create .env file
+        run: |
+          cd tests/selenium
+          cat > .env << EOF
+          MOODLE_URL=${{ secrets.MOODLE_URL }}
+          PRESSBOOKS_URL=${{ secrets.PRESSBOOKS_URL }}
+          MOODLE_STUDENT_USER=${{ secrets.MOODLE_STUDENT_USER }}
+          MOODLE_STUDENT_PASSWORD=${{ secrets.MOODLE_STUDENT_PASSWORD }}
+          SELENIUM_HEADLESS=true
+          SELENIUM_BROWSER=chrome
+          EOF
+
+      - name: Run smoke tests
+        run: |
+          cd tests/selenium
+          pytest -m smoke --html=reports/smoke-report.html
+
+      - name: Upload smoke test report
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: smoke-test-report
+          path: tests/selenium/reports/smoke-report.html
+          retention-days: 7
