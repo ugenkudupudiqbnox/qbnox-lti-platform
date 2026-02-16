@@ -30,6 +30,7 @@ if [ ! -f config.php ]; then
     --non-interactive \
     --agree-license
 
+  touch .installation_complete
   chown -R www-data:www-data /var/www/html /var/moodledata
 fi
 

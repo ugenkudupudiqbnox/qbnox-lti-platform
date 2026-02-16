@@ -184,8 +184,18 @@ until $SUDO $DC ps | grep moodle | grep -q "Up"; do
   sleep 3
 done
 # Wait for Moodle installation to complete
-until $SUDO $DC exec -T moodle test -f config.php; do
-  echo "⏳ Moodle is installing..."
+echo "⏳ Checking Moodle status..."
+# If config.php doesn't exist yet, we must wait for the installation to finish completely
+if ! $SUDO $DC exec -T moodle test -f config.php; then
+  echo "⏳ Moodle is performing initial installation, this may take a minute..."
+  until $SUDO $DC exec -T moodle test -f .installation_complete; do
+    echo "Wait..."
+    sleep 5
+  done
+fi
+# Final check to ensure Moodle is responsive
+until $SUDO $DC exec -T moodle php admin/cli/check_database_schema.php >/dev/null 2>&1; do
+  echo "⏳ Waiting for Moodle database to be ready..."
   sleep 5
 done
 echo "✅ Moodle is installed and ready"
