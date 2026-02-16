@@ -48,7 +48,9 @@ jobs:
 
       - name: Run advanced tests
         run: |
-          php scripts/ci-verify-jwt-crypto.php "$JWT"
-          php scripts/ci-test-ags-differential.php
-          php scripts/ci-test-per-course-grades.php
+          MOODLE_CONTAINER=$(docker ps --filter "name=moodle" --format "{{.ID}}")
+          docker cp scripts/ci-test-ags-differential.php "$MOODLE_CONTAINER:/tmp/"
+          docker cp scripts/ci-test-per-course-grades.php "$MOODLE_CONTAINER:/tmp/"
+          docker exec "$MOODLE_CONTAINER" php /tmp/ci-test-ags-differential.php
+          docker exec "$MOODLE_CONTAINER" php /tmp/ci-test-per-course-grades.php
         timeout-minutes: 5

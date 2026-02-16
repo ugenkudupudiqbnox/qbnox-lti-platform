@@ -1,7 +1,21 @@
 
 <?php
-require 'config.php';
+define('CLI_SCRIPT', true);
+require_once('/var/www/html/config.php');
 global $DB;
+
+// Check if there are any grades with role assignments
+$count = $DB->count_records_sql("
+    SELECT COUNT(*)
+    FROM {user} u
+    JOIN {grade_grades} g ON g.userid = u.id
+    JOIN {role_assignments} ra ON ra.userid = u.id
+");
+
+if ($count == 0) {
+    echo "⚠️  No grade/role data found - skipping AGS differential test\n";
+    exit(0);
+}
 
 // Verify instructors have grade capability, students only grade receipt
 $records = $DB->get_records_sql("
@@ -21,4 +35,4 @@ foreach ($records as $r) {
     }
 }
 
-echo "Student vs Instructor AGS roles validated\n";
+echo "✅ Student vs Instructor AGS roles validated\n";

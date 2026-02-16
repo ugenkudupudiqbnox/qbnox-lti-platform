@@ -7,7 +7,7 @@ source "$(dirname "$0")/load-env.sh"
 
 echo "Auto-registering LTI 1.3 tool in Moodle"
 
-MOODLE_CONTAINER=$(docker ps --filter "ancestor=bitnami/moodle" --format "{{.ID}}")
+MOODLE_CONTAINER=$(docker ps --filter "name=moodle" --format "{{.ID}}")
 
 docker exec "$MOODLE_CONTAINER" bash -c "
 php admin/tool/lti/cli/create_tool.php \
