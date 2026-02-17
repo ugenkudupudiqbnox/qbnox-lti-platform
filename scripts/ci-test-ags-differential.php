@@ -1,6 +1,7 @@
 
 <?php
-require 'config.php';
+define('CLI_SCRIPT', true);
+require_once('/var/www/html/config.php');
 global $DB;
 
 // Verify instructors have grade capability, students only grade receipt

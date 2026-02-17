@@ -8,12 +8,11 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        moodle: ["5.1"]
+        moodle: ["4.4"]
+    env:
+      MOODLE_VERSION: ${{ matrix.moodle }}
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set Moodle version
-        run: echo "MOODLE_VERSION=${{ matrix.moodle }}" >> $GITHUB_ENV
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -62,6 +61,8 @@ jobs:
 
       - name: Run Other Tests
         run: |
-          php scripts/ci-test-ags-differential.php
-          php scripts/ci-test-per-course-grades.php
+          docker cp scripts/ci-test-ags-differential.php moodle:/tmp/
+          docker cp scripts/ci-test-per-course-grades.php moodle:/tmp/
+          docker exec moodle php /tmp/ci-test-ags-differential.php
+          docker exec moodle php /tmp/ci-test-per-course-grades.php
         timeout-minutes: 5

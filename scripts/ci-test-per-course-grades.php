@@ -1,6 +1,7 @@
 
 <?php
-require 'config.php';
+define('CLI_SCRIPT', true);
+require_once('/var/www/html/config.php');
 global $DB;
 
 $courses = $DB->get_records('course');
