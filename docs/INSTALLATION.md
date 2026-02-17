@@ -74,16 +74,15 @@ When deploying to a production or staging environment (instead of `.local`), dev
    Update the following variables in your `.env`:
 
    ```dotenv
-   # Protocol to use (https for production)
-   PROTOCOL=https
-
-   # Your Moodle domain
-   MOODLE_DOMAIN=moodle.yourdomain.com
-   MOODLE_URL=https://moodle.yourdomain.com
-
-   # Your Pressbooks domain
+   ### --- 🌍 Domain Configuration ---
+   # Only set your domains; URLs are derived automatically by maintenance scripts.
    PRESSBOOKS_DOMAIN=pb.yourdomain.com
-   PRESSBOOKS_URL=https://pb.yourdomain.com
+   MOODLE_DOMAIN=moodle.yourdomain.com
+
+   ### --- ⚙️ Platform Settings ---
+   # Matches your production Moodle version (4.1, 4.4, or 5.1 supported).
+   # This ensures the correct LTI Advantage service registration logic is used.
+   MOODLE_VERSION=4.4
    ```
 
 ### Nginx Reverse Proxy Configuration (Production Hardening)

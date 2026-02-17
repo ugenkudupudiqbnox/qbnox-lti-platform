@@ -102,15 +102,16 @@ cp .env.production .env
 
 **2. Edit .env with your domains:**
 
-```bash
+```dotenv
 # Production environment variables
-PRESSBOOKS_URL=https://pb.lti.qbnox.com
-PRESSBOOKS_DOMAIN=pb.lti.qbnox.com
+PRESSBOOKS_DOMAIN=pb.yourdomain.com
+MOODLE_DOMAIN=moodle.yourdomain.com
 
-# Moodle URLs (if needed)
-MOODLE_URL=https://moodle.lti.qbnox.com
-MOODLE_DOMAIN=moodle.lti.qbnox.com
+# Critical: Set your production Moodle version
+MOODLE_VERSION=4.4
 ```
+
+**Note:** The maintenance scripts use `scripts/load-env.sh` to derive `PRESSBOOKS_URL` and `MOODLE_URL` automatically from these domains.
 
 **3. Restart containers:**
 

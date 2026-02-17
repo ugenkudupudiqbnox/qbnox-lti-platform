@@ -13,6 +13,7 @@ fi
 # Set defaults
 export MOODLE_DOMAIN=${MOODLE_DOMAIN:-moodle.local}
 export PRESSBOOKS_DOMAIN=${PRESSBOOKS_DOMAIN:-pressbooks.local}
+export MOODLE_VERSION=${MOODLE_VERSION:-4.4}
 
 # Logic for PROTOCOL: Use http for local domains, otherwise default to https
 if [[ "$MOODLE_DOMAIN" == "moodle.local" && "$PRESSBOOKS_DOMAIN" == "pressbooks.local" ]]; then
