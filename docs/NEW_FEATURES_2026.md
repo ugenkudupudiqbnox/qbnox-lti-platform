@@ -4,42 +4,6 @@
 
 ---
 
-## 🆕 Automatic Logout (Bidirectional Single Sign-Out)
-
-**What it does:** When a user logs out of Moodle, they are automatically logged out of Pressbooks within 60 seconds.
-
-### How It Works
-
-- JavaScript monitors Moodle session status every 30 seconds
-- When Moodle session expires (user logs out or times out), Pressbooks detects it
-- User is automatically logged out and redirected back to Moodle
-
-### Setup Required
-
-**Administrators must enable CORS** on Moodle to allow session monitoring:
-
-```bash
-cd /root/pressbooks-lti-platform
-bash scripts/enable-moodle-cors.sh
-```
-
-This configures Nginx to allow Pressbooks to check Moodle session status.
-
-### User Experience
-
-**For Students/Instructors:**
-- Click "← Return to LMS" in the admin bar to manually logout
-- Or close Moodle browser tab - Pressbooks auto-logs out within 60 seconds
-
-**Testing:**
-1. Launch Pressbooks from Moodle
-2. Log out of Moodle in another tab
-3. Return to Pressbooks - should auto-logout within 60 seconds
-
-**Troubleshooting:** See `docs/SESSION_MONITOR_TESTING.md`
-
----
-
 ## 👤 Real Usernames from Moodle
 
 **What it does:** Pressbooks uses Moodle's actual username instead of generating new ones.

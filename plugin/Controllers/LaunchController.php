@@ -41,21 +41,6 @@ class LaunchController {
         // Regular LTI launch - login user and redirect (passing target_blog_id)
         $user_id = RoleMapper::login_user($claims, $target_blog_id);
 
-        // Store LMS return URL for logout (use launch_presentation or construct from issuer)
-        $launch_presentation = $claims->{'https://purl.imsglobal.org/spec/lti/claim/launch_presentation'} ?? null;
-        $return_url = $launch_presentation->return_url ?? null;
-
-        // If no return URL, construct logout URL from platform issuer
-        if (!$return_url) {
-            $platform_issuer = $claims->iss;
-            // Convert issuer to logout URL (e.g., https://moodle.example.com/login/logout.php)
-            $parsed = parse_url($platform_issuer);
-            $return_url = $parsed['scheme'] . '://' . $parsed['host'] . '/login/logout.php';
-        }
-
-        update_user_meta($user_id, '_lti_return_url', $return_url);
-        error_log('[PB-LTI] Stored return URL for user ' . $user_id . ': ' . $return_url);
-
         // Store AGS context for grade passback (if available)
         $ags_claim = $claims->{'https://purl.imsglobal.org/spec/lti-ags/claim/endpoint'} ?? null;
         if ($ags_claim && isset($ags_claim->lineitem)) {

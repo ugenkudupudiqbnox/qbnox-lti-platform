@@ -95,21 +95,9 @@ If students completed H5P activities before you enabled grading:
 
 ---
 
-## 🚪 Logout Behavior
+## 🚪 Logout
 
-### Manual Logout
-
-- Click "← Return to LMS" in top admin bar
-- Logs out of Pressbooks
-- Redirects back to Moodle
-
-### Automatic Logout
-
-- Student logs out of Moodle
-- Within 60 seconds, automatically logged out of Pressbooks
-- No action required
-
-**Setup Required:** Administrator must enable CORS (one-time)
+When done, close the Pressbooks tab or log out of Moodle. 
 
 ---
 

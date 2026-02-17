@@ -23,15 +23,12 @@ require_once PB_LTI_PATH.'Services/H5PGradeSync.php';
 require_once PB_LTI_PATH.'Services/H5PActivityDetector.php';
 require_once PB_LTI_PATH.'Services/H5PResultsManager.php';
 require_once PB_LTI_PATH.'Services/H5PGradeSyncEnhanced.php';
-require_once PB_LTI_PATH.'Services/LogoutLinkService.php';
-require_once PB_LTI_PATH.'Services/SessionMonitorService.php';
 
 // Load all Controllers
 require_once PB_LTI_PATH.'Controllers/LoginController.php';
 require_once PB_LTI_PATH.'Controllers/LaunchController.php';
 require_once PB_LTI_PATH.'Controllers/DeepLinkController.php';
 require_once PB_LTI_PATH.'Controllers/AGSController.php';
-require_once PB_LTI_PATH.'Controllers/LogoutController.php';
 
 // Load admin, routes, and AJAX handlers
 require_once PB_LTI_PATH.'admin/menu.php';
@@ -56,17 +53,6 @@ add_action('admin_init', ['PB_LTI\Admin\H5PResultsMetaBox', 'init']);
 // Initialize H5P grade sync - Use enhanced version with chapter-level grading support
 // Falls back to individual activity sync when chapter grading is not configured
 add_action('init', ['PB_LTI\Services\H5PGradeSyncEnhanced', 'init']);
-
-// Initialize logout handler for LTI users
-add_action('init', ['PB_LTI\Controllers\LogoutController', 'init']);
-add_action('init', ['PB_LTI\Controllers\LogoutController', 'check_logout_redirect']);
-
-// Initialize logout link service (adds "Return to LMS" links)
-add_action('init', ['PB_LTI\Services\LogoutLinkService', 'init']);
-
-// Initialize session monitor (detects when LMS session expires)
-// TEMPORARILY DISABLED: Requires CORS configuration on Moodle first
-// add_action('init', ['PB_LTI\Services\SessionMonitorService', 'init']);
 
 // Initialize cookie manager (ensures cookies work in LTI embedded contexts)
 add_action('init', ['PB_LTI\Services\CookieManager', 'init'], 1);

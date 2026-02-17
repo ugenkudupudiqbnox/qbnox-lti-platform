@@ -15,44 +15,23 @@ Initially suspected **third-party cookie blocking** by browsers in LTI embedded 
 - Various header modification approaches
 
 ### Actual Root Cause (CORRECT) ✅
-The error was caused by **Session Monitor feature** (bidirectional logout) implemented on 2026-02-15.
+The error was caused by **Session Monitor feature** (bidirectional logout) which was logging users out prematurely due to CORS issues.
 
 **What was happening:**
 1. User launches from Moodle → Successfully logs in to Pressbooks ✅
 2. Session Monitor starts checking Moodle session status every 30 seconds
 3. **CORS blocks the cross-origin AJAX request to Moodle** ❌
-4. After 2 consecutive failed checks, Session Monitor assumes Moodle session expired
-5. **Session Monitor logs user OUT of Pressbooks** ❌
+4. After 2 consecutive failed checks, Session Monitor assumed Moodle session expired
+5. **Session Monitor logged the user OUT of Pressbooks** ❌
 6. User completes H5P activity → H5P tries to save result → "No user logged in" error
-
-**Browser Console Evidence:**
-```javascript
-[LTI Session Monitor] Initialized - checking Moodle session every 30s
-Access to fetch at 'https://moodle.lti.qbnox.com/lib/ajax/service.php'
-  from origin 'https://pb.lti.qbnox.com' has been blocked by CORS policy
-[LTI Session Monitor] Moodle session check failed (attempt 1/2)
-[LTI Session Monitor] Moodle session check failed (attempt 2/2)
-[LTI Session Monitor] Moodle session expired, logging out...
-logout:1 Failed to load resource: the server responded with a status of 400 (Bad Request)
-```
 
 ---
 
 ## The Solution
 
-### Immediate Fix: Disable Session Monitor
+### Final Fix: Removed Session Monitor Feature
 
-**File**: `plugin/bootstrap.php`
-
-**Change:**
-```php
-// Before:
-add_action('init', ['PB_LTI\Services\SessionMonitorService', 'init']);
-
-// After:
-// TEMPORARILY DISABLED: Requires CORS configuration on Moodle first
-// add_action('init', ['PB_LTI\Services\SessionMonitorService', 'init']);
-```
+The **bidirectional logout feature was completely removed** from the plugin. This simplifies the session management architecture and relies on standard WordPress session handling within the LTI context.
 
 **Result**: Users no longer logged out prematurely, H5P activities work correctly ✅
 
