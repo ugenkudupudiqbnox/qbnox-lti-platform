@@ -46,11 +46,22 @@ jobs:
         run: make seed seed-books simulate-ags
         timeout-minutes: 5
 
-      - name: Run advanced tests
+      - name: Run Test Deep Linking
+        run: make test-deep-linking
+        timeout-minutes: 2
+
+      - name: Run Test AGS
+        run: make test-ags
+        timeout-minutes: 2
+
+      - name: Verify JWT Crypto
         run: |
-          make test-deep-linking
-          make test-ags
+          JWT=$(cat scripts/.jwt_output || echo "")
           php scripts/ci-verify-jwt-crypto.php "$JWT"
+        timeout-minutes: 2
+
+      - name: Run Other Tests
+        run: |
           php scripts/ci-test-ags-differential.php
           php scripts/ci-test-per-course-grades.php
         timeout-minutes: 5

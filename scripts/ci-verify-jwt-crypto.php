@@ -2,11 +2,13 @@
 <?php
 // Full JWT signature verification using JWKS + OpenSSL
 
-$jwt = $argv[1] ?? null;
-$jwksUrl = getenv('JWKS_URL') ?: (getenv('PRESSBOOKS_URL') ?: 'https://pressbooks.local') . '/wp-json/pb-lti/v1/keyset';
+$jwt = $argv[1] ?? getenv('JWT') ?: null;
+$jwksUrl = getenv('JWKS_URL') ?: (getenv('PRESSBOOKS_URL') ?: 'http://pressbooks.local') . '/wp-json/pb-lti/v1/keyset';
 
 if (!$jwt) {
-    fwrite(STDERR, "JWT missing\n");
+    $jwt_env = getenv('JWT') ? "JWT env var exists but empty" : "JWT env var missing";
+    $argv_status = isset($argv[1]) ? "argv[1] exists but empty" : "argv[1] missing";
+    fwrite(STDERR, "JWT missing ($argv_status, $jwt_env)\n");
     exit(1);
 }
 

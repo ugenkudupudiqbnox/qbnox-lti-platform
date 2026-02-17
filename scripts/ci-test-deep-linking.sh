@@ -40,5 +40,8 @@ if [ -n "$GITHUB_ENV" ]; then
   echo "JWT=$JWT" >> "$GITHUB_ENV"
 fi
 
+# Save to local file for shell-based scripts that might be run in the same step
+echo "$JWT" > "$(dirname "$0")/.jwt_output"
+
 echo "✅ Deep Linking JWT structure valid"
 
