@@ -6,8 +6,12 @@ source "$(dirname "$0")/load-env.sh"
 
 echo "📘 Seeding Pressbooks with test book"
 
-# Use docker compose to run commands
-DC="docker compose -f lti-local-lab/docker-compose.yml"
+# Use docker-compose to run commands
+if command -v docker-compose >/dev/null 2>&1; then
+    DC="docker-compose -f lti-local-lab/docker-compose.yml"
+else
+    DC="docker compose -f lti-local-lab/docker-compose.yml"
+fi
 
 # Create book site if none exists
 if ! sudo -E $DC exec -T pressbooks wp site list --url="$PRESSBOOKS_URL" --allow-root | grep -q 'test-book'; then

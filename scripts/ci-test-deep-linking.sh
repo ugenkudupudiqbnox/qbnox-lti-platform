@@ -12,8 +12,10 @@ echo "Using Client ID: $CLIENT_ID"
 
 # Simulate LMS deep linking request (Step 1: Get selection UI)
 # Then Step 2: Post selection to get JWT
-RESPONSE=$(curl -k -s -X POST \
-  "$PRESSBOOKS_URL/wp-json/pb-lti/v1/deep-link" \
+# Use HTTP directly to port 8081 to bypass nginx HTTPS issues in local dev
+RESPONSE=$(curl -s -X POST \
+  -H "Host: pb.lti.qbnox.com" \
+  "http://127.0.0.1:8081/wp-json/pb-lti/v1/deep-link" \
   -d "deep_link_return_url=https://example.com/return" \
   -d "client_id=$CLIENT_ID" \
   -d "selected_book_id=2" \
