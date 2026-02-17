@@ -3,15 +3,21 @@ set -e
 
 echo "=== Setting up Moodle Cron ==="
 
+# Load environment configuration to get SUDO
+source "$(dirname "$0")/load-env.sh"
+
+# Use SUDO if defined
+DOCKER_CMD="${SUDO} docker"
+
 # Check if Moodle container is running
-if ! docker ps --format '{{.Names}}' | grep -q "^moodle$"; then
+if ! ${DOCKER_CMD} ps --format '{{.Names}}' | grep -q "^moodle$"; then
     echo "❌ Error: Moodle container is not running"
     exit 1
 fi
 
 # Test Moodle cron manually first
 echo "Testing Moodle cron..."
-docker exec moodle php /var/www/html/admin/cli/cron.php > /dev/null 2>&1 && echo "✅ Moodle cron executable works" || {
+${DOCKER_CMD} exec moodle php /var/www/html/admin/cli/cron.php > /dev/null 2>&1 && echo "✅ Moodle cron executable works" || {
     echo "❌ Error: Moodle cron failed to execute"
     exit 1
 }
@@ -19,26 +25,23 @@ docker exec moodle php /var/www/html/admin/cli/cron.php > /dev/null 2>&1 && echo
 # Create log directory if it doesn't exist
 mkdir -p /var/log
 
-# Save current crontab
-crontab -l 2>/dev/null > /tmp/current_cron || touch /tmp/current_cron
+# Save current crontab and remove existing moodle-cron entries
+crontab -l 2>/dev/null | grep -v "exec moodle php /var/www/html/admin/cli/cron.php" > /tmp/current_cron || touch /tmp/current_cron
 
-# Check if Moodle cron already exists
-if grep -q "docker exec moodle php /var/www/html/admin/cli/cron.php" /tmp/current_cron; then
-    echo "ℹ️  Moodle cron job already exists in crontab"
-else
-    echo "Adding Moodle cron job to crontab..."
+echo "Adding Moodle cron job to crontab..."
 
-    # Add Moodle cron entry (runs every 5 minutes)
-    cat >> /tmp/current_cron << 'EOF'
+# Add Moodle cron entry (runs every minute)
+# We use path to docker to ensure it works from cron environment
+DOCKER_PATH=$(command -v docker)
+cat >> /tmp/current_cron << EOF
 
-# Moodle cron - runs every 5 minutes
-*/5 * * * * docker exec moodle php /var/www/html/admin/cli/cron.php >> /var/log/moodle-cron.log 2>&1
+# Moodle cron - runs every minute
+* * * * * ${DOCKER_CMD} ${DOCKER_PATH} exec moodle php /var/www/html/admin/cli/cron.php >> /tmp/moodle-cron.log 2>&1
 EOF
 
-    # Install the new crontab
-    crontab /tmp/current_cron
-    echo "✅ Moodle cron job added to crontab"
-fi
+# Install the new crontab
+crontab /tmp/current_cron
+echo "✅ Moodle cron job added/updated in crontab"
 
 # Clean up temporary file
 rm -f /tmp/current_cron
@@ -46,7 +49,7 @@ rm -f /tmp/current_cron
 echo ""
 echo "✅ Moodle cron setup complete!"
 echo ""
-echo "Cron will run every 5 minutes automatically."
+echo "Cron will run every 1 minute automatically."
 echo "You can check logs with:"
 echo "  tail -f /var/log/moodle-cron.log"
 echo ""

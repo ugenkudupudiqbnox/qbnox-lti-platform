@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html lang="en" style="height:100%">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="viewport" content="width=device-width">
+    <link rel="shortcut icon" href="https://h5p.org/sites/all/themes/professional_themec/favicon.ico" type="image/vnd.microsoft.icon">
+    <title>Not Found | H5P</title>
+  </head>
+  <body style="margin:0;height:100%">
+    <div style="background: #fafafa url(https://h5p.org/sites/all/modules/h5p/library/images/h5p.svg) no-repeat center;background-size: 50% 40%;width: 100%;height: 100%;"></div>
+    <div style="width:100%;position:absolute;top:71%;text-align:center;color:#434343;font-family: Consolas,monaco,monospace">Not Found.</div>
+  </body>
+</html>
+

@@ -40,7 +40,12 @@ require_once PB_LTI_PATH.'routes/rest.php';
 require_once PB_LTI_PATH.'ajax/handlers.php';
 
 // Load database installer
+require_once PB_LTI_PATH.'db/schema.php';
+require_once PB_LTI_PATH.'db/migrate.php';
 require_once PB_LTI_PATH.'db/install-h5p-results.php';
+
+// Run migrations on plugins_loaded to ensure core tables exist
+add_action('plugins_loaded', 'pb_lti_run_migrations', 5);
 
 // Initialize embed mode for LTI launches (hides site chrome)
 add_action('template_redirect', ['PB_LTI\Services\EmbedService', 'init'], 1);

@@ -2,12 +2,12 @@
 namespace PB_LTI\Services;
 
 class RoleMapper {
-    public static function login_user($claims) {
+    public static function login_user($claims, $blog_id = 1) {
         $roles = $claims->{'https://purl.imsglobal.org/spec/lti/claim/roles'} ?? [];
         $wp_role = 'subscriber';
 
         foreach ($roles as $role) {
-            if (str_contains($role, 'Instructor')) {
+            if (str_contains($role, 'Instructor') || str_contains($role, 'Administrator')) {
                 $wp_role = 'editor';
                 break;
             }
@@ -141,7 +141,14 @@ class RoleMapper {
         }
 
         $user = get_user_by('id', $user_id);
-        $user->set_role($wp_role);
+
+        if (is_multisite() && $blog_id != get_current_blog_id()) {
+            add_user_to_blog($blog_id, $user_id, $wp_role);
+            error_log('[PB-LTI] Added user ' . $user_id . ' to blog ' . $blog_id . ' with role ' . $wp_role);
+        } else {
+            $user->set_role($wp_role);
+        }
+
         wp_set_current_user($user->ID);
 
         // Set auth cookie with "remember me" for LTI contexts (14 days)

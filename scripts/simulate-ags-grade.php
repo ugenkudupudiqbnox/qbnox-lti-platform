@@ -12,13 +12,16 @@ require_once($CFG->libdir.'/gradelib.php');
 
 echo "=== AGS Grade Posting Simulation ===\n\n";
 
-// Get the student
+// Get a student (try 'student' first, then generator users)
 $student = $DB->get_record('user', ['username' => 'student']);
 if (!$student) {
-    echo "✗ Student not found\n";
+    $student = $DB->get_record_sql("SELECT * FROM {user} WHERE username LIKE 'tool_generator_%' LIMIT 1");
+}
+if (!$student) {
+    echo "✗ No student users found\n";
     exit(1);
 }
-echo "✓ Student: {$student->firstname} {$student->lastname} (ID: {$student->id})\n";
+echo "✓ Student: {$student->firstname} {$student->lastname} (ID: {$student->id}, Username: {$student->username})\n";
 
 // Get the course
 $course = $DB->get_record('course', ['shortname' => 'LTI101']);
@@ -52,6 +55,7 @@ if (!$grade_item) {
     $grade_item->itemtype = 'mod';
     $grade_item->itemmodule = 'lti';
     $grade_item->iteminstance = $lti->id;
+    $grade_item->itemnumber = 0;
     $grade_item->itemname = $lti->name;
     $grade_item->grademax = $lti->grade;
     $grade_item->grademin = 0;

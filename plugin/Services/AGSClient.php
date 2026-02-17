@@ -106,7 +106,7 @@ class AGSClient {
         $jwt_payload = [
             'iss' => $platform->client_id,  // Issuer: tool's client ID
             'sub' => $platform->client_id,  // Subject: tool's client ID
-            'aud' => $platform->auth_token_url,  // Audience: token endpoint
+            'aud' => $platform->token_url,  // Audience: token endpoint
             'iat' => time(),
             'exp' => time() + 60,  // Valid for 60 seconds
             'jti' => bin2hex(random_bytes(16))  // Unique token ID
@@ -122,7 +122,7 @@ class AGSClient {
 
         // Request access token using JWT client assertion
         $client = new Client();
-        $res = $client->post($platform->auth_token_url, [
+        $res = $client->post($platform->token_url, [
             'form_params' => [
                 'grant_type' => 'client_credentials',
                 'client_assertion_type' => 'urn:ietf:params:oauth:client-assertion-type:jwt-bearer',

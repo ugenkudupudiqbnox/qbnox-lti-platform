@@ -74,14 +74,30 @@ class ContentService {
             'back_matter' => []
         ];
 
-        // Get front matter
-        $front_matter = get_posts([
-            'post_type' => 'front-matter',
+        // Shared query args to respect Pressbooks visibility settings
+        $visibility_args = [
             'posts_per_page' => -1,
             'orderby' => 'menu_order',
             'order' => 'ASC',
-            'post_status' => 'publish'
-        ]);
+            'post_status' => 'publish',
+            'meta_query' => [
+                'relation' => 'OR',
+                [
+                    'key' => '_pb_show_web',
+                    'value' => '0',
+                    'compare' => '!='
+                ],
+                [
+                    'key' => '_pb_show_web',
+                    'compare' => 'NOT EXISTS'
+                ]
+            ]
+        ];
+
+        // Get front matter
+        $front_matter = get_posts(array_merge($visibility_args, [
+            'post_type' => 'front-matter'
+        ]));
 
         foreach ($front_matter as $post) {
             $structure['front_matter'][] = [
@@ -93,13 +109,9 @@ class ContentService {
         }
 
         // Get parts (optional organizational structure)
-        $parts = get_posts([
-            'post_type' => 'part',
-            'posts_per_page' => -1,
-            'orderby' => 'menu_order',
-            'order' => 'ASC',
-            'post_status' => 'publish'
-        ]);
+        $parts = get_posts(array_merge($visibility_args, [
+            'post_type' => 'part'
+        ]));
 
         foreach ($parts as $part) {
             $structure['parts'][] = [
@@ -110,13 +122,9 @@ class ContentService {
         }
 
         // Get chapters
-        $chapters = get_posts([
-            'post_type' => 'chapter',
-            'posts_per_page' => -1,
-            'orderby' => 'menu_order',
-            'order' => 'ASC',
-            'post_status' => 'publish'
-        ]);
+        $chapters = get_posts(array_merge($visibility_args, [
+            'post_type' => 'chapter'
+        ]));
 
         foreach ($chapters as $chapter) {
             $chapter_data = [
@@ -142,13 +150,9 @@ class ContentService {
         }
 
         // Get back matter
-        $back_matter = get_posts([
-            'post_type' => 'back-matter',
-            'posts_per_page' => -1,
-            'orderby' => 'menu_order',
-            'order' => 'ASC',
-            'post_status' => 'publish'
-        ]);
+        $back_matter = get_posts(array_merge($visibility_args, [
+            'post_type' => 'back-matter'
+        ]));
 
         foreach ($back_matter as $post) {
             $structure['back_matter'][] = [
@@ -191,6 +195,24 @@ class ContentService {
                 'url' => get_permalink($post->ID),
                 'text' => wp_trim_words($post->post_content, 30)
             ];
+
+            // Explicit Grading Control: Only request a lineItem if grading is enabled AND H5P exists
+            $grading_enabled = get_post_meta($post_id, '_lti_h5p_grading_enabled', true);
+            $has_h5p = false;
+            
+            if ($grading_enabled) {
+                $activities = H5PActivityDetector::find_h5p_activities($post_id);
+                $has_h5p = !empty($activities);
+            }
+
+            if ($grading_enabled && $has_h5p) {
+                $item['lineItem'] = [
+                    'scoreMaximum' => 100,
+                    'label' => $post->post_title,
+                    'resourceId' => 'pb_chapter_' . $blog_id . '_' . $post_id,
+                    'tag' => 'pressbooks-lti'
+                ];
+            }
         } else {
             // Whole book
             $item = [

@@ -74,11 +74,11 @@ echo "  Tool URL: " . ($lti->toolurl ?: '(empty - requires content selection)') 
 echo "  Grade: {$lti->grade}\n\n";
 
 echo "📝 Next Steps:\n";
-echo "  1. Go to course: https://moodle.lti.qbnox.com/course/view.php?id={$course_id}\n";
+echo "  1. Go to course: " . $CFG->wwwroot . "/course/view.php?id={$course_id}\n";
 echo "  2. Find activity: '{$lti->name}'\n";
 echo "  3. Edit it (gear icon → Edit settings)\n";
 echo "  4. Look for 'Select content' button\n";
 echo "  5. Click it to open content picker!\n\n";
 
 echo "Or edit directly:\n";
-echo "https://moodle.lti.qbnox.com/course/modedit.php?update={$cm->id}\n";
+echo $CFG->wwwroot . "/course/modedit.php?update={$cm->id}\n";

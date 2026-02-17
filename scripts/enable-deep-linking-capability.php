@@ -22,8 +22,9 @@ if (!$capabilities) {
 echo "Current capabilities: " . json_encode($capabilities) . "\n\n";
 
 // Add Deep Linking capabilities
-$capabilities['LtiDeepLinkingRequest'] = 'https://pb.lti.qbnox.com/wp-json/pb-lti/v1/deep-link';
-$capabilities['ContentItemSelectionRequest'] = 'https://pb.lti.qbnox.com/wp-json/pb-lti/v1/deep-link';
+$pressbooks_url = getenv('PRESSBOOKS_URL') ?: 'https://pb.lti.qbnox.com';
+$capabilities['LtiDeepLinkingRequest'] = $pressbooks_url . '/wp-json/pb-lti/v1/deep-link';
+$capabilities['ContentItemSelectionRequest'] = $pressbooks_url . '/wp-json/pb-lti/v1/deep-link';
 
 // Enable content item message type
 $tool->lti_contentitem = 1;

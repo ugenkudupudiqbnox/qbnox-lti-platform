@@ -22,11 +22,16 @@ class JwtValidator {
         }
 
         // Fetch JWKS and parse keys
-        $jwks_json = file_get_contents($platform->key_set_url);
+        $jwks_json = @file_get_contents($platform->key_set_url);
+        if ($jwks_json === false) {
+            $error = error_get_last();
+            throw new \Exception('Failed to fetch JWKS from ' . $platform->key_set_url . ': ' . ($error['message'] ?? 'Unknown error'));
+        }
+
         $jwks = json_decode($jwks_json, true);
         
         if (!isset($jwks['keys'])) {
-            throw new \Exception('Invalid JWKS format');
+            throw new \Exception('Invalid JWKS format: "keys" property missing in ' . $platform->key_set_url);
         }
 
         // Parse the key set and decode JWT

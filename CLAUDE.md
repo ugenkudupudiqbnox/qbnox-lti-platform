@@ -40,6 +40,11 @@ make collect-artifacts  # Collect CI evidence artifacts
 make up install-pressbooks install enable-lti seed seed-books test
 ```
 
+### Environment Configuration
+- **PHP Upload Limits**: `512MB` (`upload_max_filesize` and `post_max_size`) configured in `pressbooks` container via `/usr/local/etc/php/conf.d/uploads.ini`.
+- **Permissions**: `/var/www/pressbooks/web/app/uploads` and `/var/www/pressbooks/web/app/cache` must be writable by `www-data` (`chown -R www-data:www-data`).
+- **H5P**: WordPress H5P plugin is configured with the Hub enabled. Metadata refresh can be triggered via `wp eval`.
+
 ### Test Environment URLs
 - Moodle: `http://moodle.local:8080`
 - Pressbooks: `http://pressbooks.local:8081`

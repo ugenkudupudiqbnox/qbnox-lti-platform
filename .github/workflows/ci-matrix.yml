@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        moodle: ["5.1"]
+        moodle: ["4.1", "4.4", "5.1"]
     steps:
       - uses: actions/checkout@v4
 
@@ -43,11 +43,13 @@ jobs:
         timeout-minutes: 2
 
       - name: Seed data
-        run: make seed seed-books
-        timeout-minutes: 3
+        run: make seed seed-books simulate-ags
+        timeout-minutes: 5
 
       - name: Run advanced tests
         run: |
+          make test-deep-linking
+          make test-ags
           php scripts/ci-verify-jwt-crypto.php "$JWT"
           php scripts/ci-test-ags-differential.php
           php scripts/ci-test-per-course-grades.php

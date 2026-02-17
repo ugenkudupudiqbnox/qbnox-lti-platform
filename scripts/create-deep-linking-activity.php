@@ -37,7 +37,8 @@ $existing_cm = $DB->get_record_sql(
 
 if ($existing_cm) {
     echo "✓ Deep Linking activity already exists\n";
-    echo "  URL: https://moodle.lti.qbnox.com/mod/lti/view.php?id={$existing_cm->id}\n";
+    $moodle_url = getenv('MOODLE_URL') ?: 'http://moodle.local:8080';
+    echo "  URL: {$moodle_url}/mod/lti/view.php?id={$existing_cm->id}\n";
     exit(0);
 }
 
@@ -95,4 +96,5 @@ rebuild_course_cache($course->id, true);
 echo "✓ Course cache rebuilt\n";
 
 echo "\n=== Success! ===\n";
-echo "Deep Linking Test URL: https://moodle.lti.qbnox.com/mod/lti/view.php?id={$cmid}\n";
+$moodle_url = getenv('MOODLE_URL') ?: 'http://moodle.local:8080';
+echo "Deep Linking Test URL: {$moodle_url}/mod/lti/view.php?id={$cmid}\n";

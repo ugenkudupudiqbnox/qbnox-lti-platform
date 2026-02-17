@@ -44,8 +44,9 @@ retry 15 $DC exec -T "$DB_CONTAINER" mysqladmin ping -h localhost --silent
 echo "⏳ Waiting for WordPress..."
 retry 15 $DC exec -T "$WP_CONTAINER" wp --info --url="$WP_HOME" --allow-root >/dev/null
 
-echo "📦 Installing WordPress Multisite..."
+echo "📦 Verifying WordPress Multisite..."
 if ! $DC exec -T "$WP_CONTAINER" wp core is-installed --url="$WP_HOME" --allow-root >/dev/null 2>&1; then
+  echo "⚠️ WordPress not installed, but it should have been by the entrypoint. Retrying core install..."
   retry 5 $DC exec -T "$WP_CONTAINER" wp core multisite-install \
     --url="$WP_HOME" \
     --title="$WP_TITLE" \
@@ -56,28 +57,7 @@ if ! $DC exec -T "$WP_CONTAINER" wp core is-installed --url="$WP_HOME" --allow-r
     --allow-root
 fi
 
-echo "📝 Writing Bedrock-compatible .htaccess..."
-
-$DC exec -T "$WP_CONTAINER" bash -c "cat > /var/www/html/.htaccess" <<'EOF'
-# BEGIN WordPress (Pressbooks / Bedrock)
-<IfModule mod_rewrite.c>
-RewriteEngine On
-RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
-RewriteBase /
-RewriteRule ^index\.php$ - [L]
-RewriteRule ^([_0-9a-zA-Z-]+/)?wp-admin$ $1wp-admin/ [R=301,L]
-RewriteCond %{REQUEST_FILENAME} -f [OR]
-RewriteCond %{REQUEST_FILENAME} -d
-RewriteRule ^ - [L]
-RewriteRule ^([_0-9a-zA-Z-]+/)?(wp-(content|admin|includes).*) wp/$2 [L]
-RewriteRule ^([_0-9a-zA-Z-]+/)?(.*\.php)$ wp/$2 [L]
-RewriteRule . index.php [L]
-</IfModule>
-# END WordPress
-EOF
-
-echo "🔌 Network-Activating Pressbooks..."
-
+echo "🔌 Ensuring Pressbooks is network-activated..."
 retry 5 $DC exec -T "$WP_CONTAINER" wp plugin activate pressbooks --network --url="$WP_HOME" --allow-root
 
 echo "✅ Pressbooks setup complete"

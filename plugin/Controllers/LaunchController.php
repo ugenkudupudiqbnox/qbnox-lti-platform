@@ -31,11 +31,15 @@ class LaunchController {
             return DeepLinkController::handle_deep_linking_launch($claims);
         }
 
-        // Regular LTI launch - login user and redirect
-        $user_id = RoleMapper::login_user($claims);
-
-        // Get target link URI from claims
+        // Get target link URI from claims early to detect target blog
         $target_link_uri = $claims->{'https://purl.imsglobal.org/spec/lti/claim/target_link_uri'} ?? home_url();
+
+        // Resolve target URL to extract blog_id (needed for correct user login/association)
+        $resolved = self::resolve_url($target_link_uri);
+        $target_blog_id = $resolved['blog_id'] ?? get_current_blog_id();
+
+        // Regular LTI launch - login user and redirect (passing target_blog_id)
+        $user_id = RoleMapper::login_user($claims, $target_blog_id);
 
         // Store LMS return URL for logout (use launch_presentation or construct from issuer)
         $launch_presentation = $claims->{'https://purl.imsglobal.org/spec/lti/claim/launch_presentation'} ?? null;
@@ -55,8 +59,9 @@ class LaunchController {
         // Store AGS context for grade passback (if available)
         $ags_claim = $claims->{'https://purl.imsglobal.org/spec/lti-ags/claim/endpoint'} ?? null;
         if ($ags_claim && isset($ags_claim->lineitem)) {
-            // Extract post_id from target URL (handles multisite URLs)
-            $post_id = self::get_post_id_from_url($target_link_uri);
+            // Use already resolved post_id and blog_id
+            $post_id = $resolved['post_id'] ?? 0;
+            $blog_id = $target_blog_id;
 
             // Store global LTI context (user-level)
             update_user_meta($user_id, '_lti_platform_issuer', $claims->iss);
@@ -64,6 +69,11 @@ class LaunchController {
 
             // Store chapter-specific AGS context (user + post level)
             if ($post_id) {
+                // Switch to target blog to update post meta
+                if (is_multisite() && $blog_id != get_current_blog_id()) {
+                    switch_to_blog($blog_id);
+                }
+
                 // Use post meta to store per-user, per-chapter lineitem
                 $lineitem_key = '_lti_ags_lineitem_user_' . $user_id;
                 update_post_meta($post_id, $lineitem_key, $ags_claim->lineitem);
@@ -76,9 +86,13 @@ class LaunchController {
                 $resource_link_id = $claims->{'https://purl.imsglobal.org/spec/lti/claim/resource_link'}->id ?? '';
                 update_post_meta($post_id, $resource_link_key, $resource_link_id);
 
-                error_log('[PB-LTI] Stored AGS context for user ' . $user_id . ', post ' . $post_id . ' - lineitem: ' . $ags_claim->lineitem);
+                error_log('[PB-LTI] Stored AGS context for user ' . $user_id . ', post ' . $post_id . ' (blog ' . $blog_id . ') - lineitem: ' . $ags_claim->lineitem);
+
+                if (is_multisite()) {
+                    restore_current_blog();
+                }
             } else {
-                error_log('[PB-LTI] Warning: Could not extract post_id from target URL: ' . $target_link_uri);
+                error_log('[PB-LTI] Warning: Could not resolve post_id from target URL: ' . $target_link_uri);
                 // Fall back to old behavior (store in user meta) for non-post launches
                 update_user_meta($user_id, '_lti_ags_lineitem', $ags_claim->lineitem);
                 update_user_meta($user_id, '_lti_ags_scope', $ags_claim->scope ?? []);
@@ -96,38 +110,38 @@ class LaunchController {
     }
 
     /**
-     * Get post ID from URL (handles WordPress multisite)
+     * Resolve URL to post_id and blog_id (handles WordPress multisite)
      *
-     * @param string $url The URL to extract post_id from
-     * @return int|null Post ID or null if not found
+     * @param string $url The URL to resolve
+     * @return array Array with post_id and blog_id
      */
-    private static function get_post_id_from_url($url) {
-        // For multisite, we need to switch to the correct blog first
+    public static function resolve_url($url) {
+        $result = [
+            'post_id' => null,
+            'blog_id' => get_current_blog_id(),
+        ];
+
+        // For multisite, we need to find the correct blog first
         if (is_multisite()) {
-            // Get the blog ID from the URL
             $blog_id = get_blog_id_from_url(parse_url($url, PHP_URL_HOST), parse_url($url, PHP_URL_PATH));
 
             if ($blog_id) {
-                // Switch to the target blog
+                $result['blog_id'] = $blog_id;
                 switch_to_blog($blog_id);
-
-                // Get the post ID
-                $post_id = url_to_postid($url);
-
-                // Switch back to the original blog
+                $result['post_id'] = url_to_postid($url);
                 restore_current_blog();
 
-                if ($post_id) {
-                    error_log('[PB-LTI] Extracted post_id ' . $post_id . ' from URL (blog ' . $blog_id . '): ' . $url);
-                    return $post_id;
+                if ($result['post_id']) {
+                    error_log('[PB-LTI] Resolved post_id ' . $result['post_id'] . ' from URL (blog ' . $blog_id . '): ' . $url);
+                    return $result;
                 }
             }
         } else {
             // Single site - use standard function
-            $post_id = url_to_postid($url);
-            if ($post_id) {
-                error_log('[PB-LTI] Extracted post_id ' . $post_id . ' from URL: ' . $url);
-                return $post_id;
+            $result['post_id'] = url_to_postid($url);
+            if ($result['post_id']) {
+                error_log('[PB-LTI] Resolved post_id ' . $result['post_id'] . ' from URL: ' . $url);
+                return $result;
             }
         }
 
@@ -149,22 +163,29 @@ class LaunchController {
                 ));
 
                 if ($blog_id) {
+                    $result['blog_id'] = $blog_id;
                     switch_to_blog($blog_id);
 
-                    // Get post by slug
-                    $post = get_page_by_path($chapter_slug, OBJECT, ['chapter', 'front-matter', 'back-matter', 'part']);
+                    // Get post by slug using get_posts (more reliable than get_page_by_path for non-top-level)
+                    $posts = get_posts([
+                        'name' => $chapter_slug,
+                        'post_type' => ['chapter', 'front-matter', 'back-matter', 'part'],
+                        'posts_per_page' => 1,
+                        'fields' => 'ids'
+                    ]);
 
                     restore_current_blog();
 
-                    if ($post) {
-                        error_log('[PB-LTI] Extracted post_id ' . $post->ID . ' from manual parsing (blog ' . $blog_id . '): ' . $url);
-                        return $post->ID;
+                    if (!empty($posts)) {
+                        $result['post_id'] = $posts[0];
+                        error_log('[PB-LTI] Resolved post_id ' . $result['post_id'] . ' from manual parsing (blog ' . $blog_id . '): ' . $url);
+                        return $result;
                     }
                 }
             }
         }
 
-        error_log('[PB-LTI] Warning: Could not extract post_id from URL: ' . $url);
-        return null;
+        error_log('[PB-LTI] Warning: Could not resolve post_id for URL: ' . $url);
+        return $result;
     }
 }

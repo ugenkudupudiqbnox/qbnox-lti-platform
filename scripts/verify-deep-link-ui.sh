@@ -1,6 +1,9 @@
 #!/bin/bash
 set -e
 
+# Load environment configuration
+source "$(dirname "$0")/load-env.sh"
+
 echo "🧪 Verifying Deep Linking Content Picker Implementation"
 echo "======================================================="
 echo ""
@@ -11,7 +14,7 @@ RED='\033[0;31m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-PRESSBOOKS_URL="https://pb.lti.qbnox.com"
+# PRESSBOOKS_URL is now loaded from load-env.sh
 DEEP_LINK_ENDPOINT="${PRESSBOOKS_URL}/wp-json/pb-lti/v1/deep-link"
 
 # Test 1: Check if endpoint is accessible

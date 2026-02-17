@@ -8,7 +8,7 @@ add_action('network_admin_menu', function(){
 
 function pb_lti_audit_page() {
   global $wpdb;
-  $rows = $wpdb->get_results("SELECT * FROM {$wpdb->prefix}pb_lti_audit ORDER BY id DESC LIMIT 100");
+  $rows = $wpdb->get_results("SELECT * FROM {$wpdb->prefix}lti_audit ORDER BY id DESC LIMIT 100");
   echo '<h1>LTI Audit Log</h1><table><tr><th>Event</th><th>Context</th><th>Time</th></tr>';
   foreach ($rows as $r) {
     echo "<tr><td>{$r->event}</td><td>{$r->context}</td><td>{$r->created_at}</td></tr>";

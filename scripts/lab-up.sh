@@ -93,16 +93,16 @@ fi
 
 # 3. Verify Docker Permissions and provide instructions if failed
 if ! docker ps &> /dev/null; then
-    echo "⚠️  Permission denied when connecting to Docker daemon."
-    echo "Try running the following commands to add your user to the docker group:"
-    echo ""
-    echo "    sudo usermod -aG docker $USER"
-    echo "    newgrp docker"
-    echo ""
-    echo "Alternatively, you can run this script with sudo, but adding your user to the group is recommended."
-    
-    # If we appear to be in a CI or non-interactive environment, we might want to try sudo
-    if [[ -t 0 ]]; then
+    if [[ "$CI" == "true" || "$NON_INTERACTIVE" == "true" ]]; then
+        echo "Non-interactive mode: Using sudo for Docker..."
+        SUDO="sudo -E"
+    elif [[ -t 0 ]]; then
+        echo "⚠️  Permission denied when connecting to Docker daemon."
+        echo "Try running the following commands to add your user to the docker group:"
+        echo ""
+        echo "    sudo usermod -aG docker $USER"
+        echo "    newgrp docker"
+        echo ""
         read -p "Would you like to try running with sudo for this session? (y/n) " -n 1 -r
         echo
         if [[ ! $REPLY =~ ^[Yy]$ ]]; then
@@ -139,6 +139,12 @@ for domain in "$MOODLE_DOMAIN" "$PRESSBOOKS_DOMAIN"; do
         echo "✅ $domain already mapped in /etc/hosts"
     fi
 done
+
+# 6. Configure Local Nginx Proxy
+if [[ "$MOODLE_DOMAIN" == "moodle.local" && "$PRESSBOOKS_DOMAIN" == "pressbooks.local" ]]; then
+    echo "🌐 Setting up local Nginx proxy..."
+    sudo "$(dirname "$0")/setup-local-nginx.sh"
+fi
 
 # === Setup Lab ===
 
@@ -205,6 +211,17 @@ echo "➡ Waiting for Pressbooks"
 until $SUDO $DC ps | grep pressbooks | grep -q "Up"; do
   sleep 3
 done
-echo "✅ Pressbooks container is up"
+
+# Wait for Pressbooks installation to complete (it runs composer install on first run)
+echo "⏳ Checking Pressbooks status..."
+if ! $SUDO $DC exec -T pressbooks test -f .installation_complete; then
+  echo "⏳ Pressbooks is performing initial installation (Composer install might take a few minutes)..."
+  until $SUDO $DC exec -T pressbooks test -f .installation_complete; do
+    echo "Wait..."
+    sleep 5
+  done
+fi
+
+echo "✅ Pressbooks is installed and ready"
 
 echo "🚀 Local LTI lab is ready"

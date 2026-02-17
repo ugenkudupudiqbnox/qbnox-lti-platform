@@ -23,11 +23,16 @@ fi
 
 # Construct full URLs
 if [[ "$MOODLE_DOMAIN" == "moodle.local" && "$PRESSBOOKS_DOMAIN" == "pressbooks.local" ]]; then
-    export MOODLE_URL="${PROTOCOL}://${MOODLE_DOMAIN}:8080"
-    export PRESSBOOKS_URL="${PROTOCOL}://${PRESSBOOKS_DOMAIN}:8081"
+    # With Nginx proxy on host, we use standard port 80/443
+    export MOODLE_URL="${PROTOCOL}://${MOODLE_DOMAIN}"
+    export PRESSBOOKS_URL="${PROTOCOL}://${PRESSBOOKS_DOMAIN}"
+    export MOODLE_INTERNAL_DOMAIN="${MOODLE_DOMAIN}"
+    export PRESSBOOKS_INTERNAL_DOMAIN="${PRESSBOOKS_DOMAIN}"
 else
     export MOODLE_URL="${PROTOCOL}://${MOODLE_DOMAIN}"
     export PRESSBOOKS_URL="${PROTOCOL}://${PRESSBOOKS_DOMAIN}"
+    export MOODLE_INTERNAL_DOMAIN="${MOODLE_DOMAIN}"
+    export PRESSBOOKS_INTERNAL_DOMAIN="${PRESSBOOKS_DOMAIN}"
 fi
 
 # Check if sudo is needed for Docker

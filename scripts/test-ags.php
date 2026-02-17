@@ -3,6 +3,10 @@ define('CLI_SCRIPT', true);
 require_once('/var/www/html/config.php');
 require_once($CFG->libdir.'/clilib.php');
 
+// Load environment variables for Pressbooks URL
+$pressbooks_url = getenv('PRESSBOOKS_URL') ?: 'https://pb.lti.qbnox.com';
+$pressbooks_url = rtrim($pressbooks_url, '/');
+
 echo "=== Testing Assignment & Grade Services (AGS) ===\n\n";
 
 // Find the Pressbooks LTI tool
@@ -49,7 +53,7 @@ if ($existing) {
     $lti->intro = 'Test Assignment & Grade Services grade passback';
     $lti->introformat = FORMAT_HTML;
     $lti->typeid = $tool->id;
-    $lti->toolurl = 'https://pb.lti.qbnox.com/';
+    $lti->toolurl = $pressbooks_url . '/';
     $lti->instructorchoicesendname = 1;
     $lti->instructorchoicesendemailaddr = 1;
     $lti->instructorchoiceacceptgrades = 1; // Enable grade passback
@@ -99,12 +103,12 @@ if ($grade_item) {
 }
 
 echo "\n=== AGS Test Instructions ===\n";
-echo "1. Log in to Moodle as instructor: https://moodle.lti.qbnox.com/\n";
+echo "1. Log in to Moodle as instructor: " . $CFG->wwwroot . "/\n";
 echo "2. Go to course: LTI Test Course\n";
 echo "3. Click: 'AGS Graded Assignment' activity\n";
 echo "4. From Pressbooks, post a grade back using the REST API:\n";
 echo "\n";
-echo "curl -X POST 'https://pb.lti.qbnox.com/wp-json/pb-lti/v1/ags/post-score' \\\n";
+echo "curl -X POST '{$pressbooks_url}/wp-json/pb-lti/v1/ags/post-score' \\\n";
 echo "  -H 'Content-Type: application/json' \\\n";
 echo "  -d '{\n";
 echo "    \"lineitem_url\": \"<lineitem_url_from_launch_jwt>\",\n";
@@ -120,4 +124,4 @@ echo "\n";
 echo "=== Tool Configuration ===\n";
 echo "Token Endpoint: " . ($tool->lti_toolurl ?? 'NOT SET') . "\n";
 echo "Accept Grades: " . ($tool->lti_acceptgrades ? "YES" : "NO") . "\n";
-echo "AGS Endpoint: https://pb.lti.qbnox.com/wp-json/pb-lti/v1/ags/post-score\n";
+echo "AGS Endpoint: {$pressbooks_url}/wp-json/pb-lti/v1/ags/post-score\n";

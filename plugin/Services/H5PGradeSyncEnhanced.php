@@ -85,11 +85,11 @@ class H5PGradeSyncEnhanced {
             return;
         }
 
-        // Calculate chapter-level score based on configuration
-        $chapter_score = H5PResultsManager::calculate_chapter_score($user_id, $post_id);
+        // Calculate chapter-level score based on configuration (passing current data to include it)
+        $chapter_score = H5PResultsManager::calculate_chapter_score($user_id, $post_id, $content_id, $data);
 
         error_log(sprintf(
-            '[PB-LTI H5P Enhanced] Chapter %d score for user %d: %.2f/%.2f (%.1f%%)',
+            '[PB-LTI H5P Enhanced] Chapter %d aggregated score for user %d: %.2f/%.2f (%.1f%%)',
             $post_id,
             $user_id,
             $chapter_score['score'],
@@ -319,14 +319,14 @@ class H5PGradeSyncEnhanced {
 
         $where_user = $user_id ? $wpdb->prepare(" AND user_id = %d", $user_id) : "";
 
-        $h5p_results = $wpdb->get_results($wpdb->prepare(
-            "SELECT DISTINCT user_id, content_id, MAX(id) as latest_result_id
+        $query = "SELECT DISTINCT user_id, content_id, MAX(id) as latest_result_id
              FROM {$results_table}
              WHERE content_id IN (" . implode(',', array_map('intval', $h5p_ids)) . ")
              {$where_user}
              GROUP BY user_id, content_id
-             ORDER BY user_id, content_id"
-        ));
+             ORDER BY user_id, content_id";
+
+        $h5p_results = $wpdb->get_results($query);
 
         error_log('[PB-LTI H5P Sync] Found ' . count($h5p_results) . ' H5P results to potentially sync for post ' . $post_id);
 

@@ -11,12 +11,19 @@ DC="docker compose -f lti-local-lab/docker-compose.yml"
 
 # Create book site if none exists
 if ! sudo -E $DC exec -T pressbooks wp site list --url="$PRESSBOOKS_URL" --allow-root | grep -q 'test-book'; then
-  sudo -E $DC exec -T pressbooks wp site create \
-    --slug=test-book \
-    --title='LTI Test Book' \
-    --email=admin@example.com \
-    --url="$PRESSBOOKS_URL" \
-    --allow-root
+    sudo -E $DC exec -T pressbooks wp site create \
+        --slug=test-book \
+        --title='LTI Test Book' \
+        --email=admin@example.com \
+        --url="$PRESSBOOKS_URL" \
+        --allow-root
+    
+    # extract PB_DOMAIN and PB_PORT for URL construction
+    PB_DOMAIN=$(echo "$PRESSBOOKS_URL" | sed -e 's|^[^/]*//||' -e 's|/.*$||')
+    
+    # Use search-replace to fix URL structures instead of direct SQL
+    # This avoids TLS certificate issues with the raw mysql client in older PHP-based containers
+    sudo -E $DC exec -T pressbooks wp search-replace "http://pressbooks.local" "$PRESSBOOKS_URL" --url="$PRESSBOOKS_URL" --allow-root --network || true
 fi
 
 # Get book URL

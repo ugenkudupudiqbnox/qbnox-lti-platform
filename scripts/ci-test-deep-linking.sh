@@ -6,14 +6,22 @@ source "$(dirname "$0")/load-env.sh"
 
 echo "🔗 Testing Deep Linking response"
 
-# Simulate LMS deep linking request
+# Fetch registered client ID from Pressbooks
+CLIENT_ID=$(sudo docker exec pressbooks mysql -h mysql -u root -proot --skip-ssl pressbooks -se "SELECT client_id FROM wp_lti_platforms LIMIT 1" || echo "ci-test-client")
+echo "Using Client ID: $CLIENT_ID"
+
+# Simulate LMS deep linking request (Step 1: Get selection UI)
+# Then Step 2: Post selection to get JWT
 RESPONSE=$(curl -k -s -X POST \
   "$PRESSBOOKS_URL/wp-json/pb-lti/v1/deep-link" \
   -d "deep_link_return_url=https://example.com/return" \
-  -d "client_id=ci-test-client")
+  -d "client_id=$CLIENT_ID" \
+  -d "selected_book_id=2" \
+  -d "selected_title=LTI Test Book" \
+  -d "selected_url=${PRESSBOOKS_URL}/test-book")
 
-# Extract JWT
-JWT=$(echo "$RESPONSE" | sed -n 's/.*JWT=\([^&]*\).*/\1/p')
+# Extract JWT from the auto-post form
+JWT=$(echo "$RESPONSE" | sed -n 's/.*name="JWT" value="\([^"]*\)".*/\1/p')
 
 if [ -z "$JWT" ]; then
   echo "❌ No JWT returned from Deep Linking"

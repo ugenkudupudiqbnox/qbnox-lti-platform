@@ -33,24 +33,22 @@ WP_HOME=$WP_HOME
 WP_SITEURL=\${WP_HOME}/wp
 WP_ENV=development
 EOF
-  
-  # Generate salts
-  wp config shuffle-salts --allow-root || true
 fi
 
 # Ensure basic vars are set/updated in .env
-wp dotenv set DB_NAME "$DB_NAME" --allow-root
-wp dotenv set DB_USER "$DB_USER" --allow-root
-wp dotenv set DB_PASSWORD "$DB_PASSWORD" --allow-root
-wp dotenv set DB_HOST "$DB_HOST" --allow-root
-wp dotenv set WP_HOME "$WP_HOME" --allow-root
+echo "Updating .env from environment variables..."
+wp dotenv set DB_NAME "$DB_NAME" --allow-root || true
+wp dotenv set DB_USER "$DB_USER" --allow-root || true
+wp dotenv set DB_PASSWORD "$DB_PASSWORD" --allow-root || true
+wp dotenv set DB_HOST "$DB_HOST" --allow-root || true
+wp dotenv set WP_HOME "$WP_HOME" --allow-root || true
 
 # Install multisite if needed
-if ! mysql -h"$DB_HOST" -u"$DB_USER" -p"$DB_PASSWORD" "$DB_NAME" -e "SHOW TABLES LIKE 'wp_users';" | grep -q 'wp_users'; then
+if ! mysql -h"$DB_HOST" -u"$DB_USER" -p"$DB_PASSWORD" --ssl-mode=DISABLED "$DB_NAME" -e "SHOW TABLES LIKE 'wp_users';" 2>/dev/null | grep -q 'wp_users'; then
   echo "Installing WordPress Multisite"
   # Temporarily disable MULTISITE in case it's in .env to allow installer to run
   sed -i 's/^MULTISITE=true/MULTISITE=false/' .env || true
-  
+
   wp core multisite-install \
     --url="$WP_HOME" \
     --title="Pressbooks Network" \
@@ -80,6 +78,29 @@ for theme in pressbooks-aldine pressbooks-book pressbooks-clarke pressbooks-donh
   wp theme enable "$theme" --network --url="$WP_HOME" --path="$WP_PATH" --allow-root 2>/dev/null || true
 done
 
+# Ensure .htaccess exists for Bedrock
+if [ ! -f web/.htaccess ]; then
+  echo "Creating .htaccess..."
+  cat > web/.htaccess <<EOF
+# BEGIN WordPress (Pressbooks / Bedrock)
+<IfModule mod_rewrite.c>
+RewriteEngine On
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+RewriteBase /
+RewriteRule ^index\.php$ - [L]
+RewriteRule ^([_0-9a-zA-Z-]+/)?wp-admin$ \$1wp-admin/ [R=301,L]
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+RewriteRule ^([_0-9a-zA-Z-]+/)?(wp-(content|admin|includes).*) wp/\$2 [L]
+RewriteRule ^([_0-9a-zA-Z-]+/)?(.*\.php)$ wp/\$2 [L]
+RewriteRule . index.php [L]
+</IfModule>
+# END WordPress
+EOF
+  chown www-data:www-data web/.htaccess
+fi
+
 # Install LTI plugin Composer dependencies
 LTI_PLUGIN_PATH="${APP_ROOT}/web/app/plugins/pressbooks-lti-platform"
 if [ -d "$LTI_PLUGIN_PATH" ] && [ -f "$LTI_PLUGIN_PATH/composer.json" ]; then
@@ -91,5 +112,9 @@ if [ -d "$LTI_PLUGIN_PATH" ] && [ -f "$LTI_PLUGIN_PATH/composer.json" ]; then
     echo "✓ LTI plugin dependencies installed"
   fi
 fi
+
+echo "Creating installation marker..."
+touch /var/www/pressbooks/.installation_complete
+ls -la /var/www/pressbooks/.installation_complete
 
 exec "$@"

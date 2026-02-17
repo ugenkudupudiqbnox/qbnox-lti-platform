@@ -1,10 +1,10 @@
 <?php
 define('WP_USE_THEMES', false);
-require('/var/www/html/web/wp/wp-load.php');
+require('/var/www/pressbooks/web/wp/wp-load.php');
 
 global $wpdb;
 
-$platform_issuer = 'https://moodle.lti.qbnox.com';
+$platform_issuer = getenv('MOODLE_URL') ?: 'http://moodle.local:8080';
 $deployment_id = '1';
 
 echo "=== Registering Deployment ===\n";

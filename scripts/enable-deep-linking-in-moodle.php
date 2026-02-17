@@ -33,7 +33,8 @@ if (!$capabilities) {
 }
 
 // Add Deep Linking endpoints
-$deep_link_url = 'https://pb.lti.qbnox.com/wp-json/pb-lti/v1/deep-link';
+$pressbooks_url = getenv('PRESSBOOKS_URL') ?: 'http://pressbooks.local:8081';
+$deep_link_url = $pressbooks_url . '/wp-json/pb-lti/v1/deep-link';
 
 $capabilities['ContentItemSelectionRequest.url'] = $deep_link_url;
 $capabilities['LtiDeepLinkingRequest.url'] = $deep_link_url;
@@ -52,7 +53,8 @@ echo "✅ Content item enabled: {$tool->lti_contentitem}\n\n";
 
 echo "🎉 Configuration complete!\n\n";
 echo "📖 Next Steps:\n";
-echo "   1. Go to your Moodle course: https://moodle.lti.qbnox.com/course/view.php?id=2\n";
+$moodle_url = getenv('MOODLE_URL') ?: 'http://moodle.local:8080';
+echo "   1. Go to your Moodle course: {$moodle_url}/course/view.php?id=2\n";
 echo "   2. Turn editing on\n";
 echo "   3. Add activity → External Tool\n";
 echo "   4. Select 'Pressbooks LTI Platform'\n";

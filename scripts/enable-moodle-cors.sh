@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
 set -e
 
+# Load environment configuration
+source "$(dirname "$0")/load-env.sh"
+
 echo "=== Enabling CORS for Moodle → Pressbooks Session Monitoring ==="
 echo ""
 
 # Check if nginx config exists
-NGINX_CONFIG="/etc/nginx/sites-available/moodle.lti.qbnox.com"
+NGINX_CONFIG="/etc/nginx/sites-available/${MOODLE_DOMAIN}"
 
 if [ ! -f "$NGINX_CONFIG" ]; then
     echo "❌ Nginx config not found: $NGINX_CONFIG"
@@ -27,24 +30,25 @@ echo "Adding CORS configuration for /lib/ajax/service.php..."
 echo ""
 
 # Create CORS configuration
-CORS_CONFIG='
+CORS_CONFIG=$(cat <<EOF
     # Allow Pressbooks to check Moodle session status
     location /lib/ajax/service.php {
-        add_header '\''Access-Control-Allow-Origin'\'' '\''https://pb.lti.qbnox.com'\'' always;
-        add_header '\''Access-Control-Allow-Credentials'\'' '\''true'\'' always;
-        add_header '\''Access-Control-Allow-Methods'\'' '\''GET, POST, OPTIONS'\'' always;
-        add_header '\''Access-Control-Allow-Headers'\'' '\''Content-Type'\'' always;
+        add_header 'Access-Control-Allow-Origin' '${PRESSBOOKS_URL}' always;
+        add_header 'Access-Control-Allow-Credentials' 'true' always;
+        add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS' always;
+        add_header 'Access-Control-Allow-Headers' 'Content-Type' always;
 
-        if ($request_method = '\''OPTIONS'\'') {
+        if (\$request_method = 'OPTIONS') {
             return 204;
         }
 
-        try_files $uri =404;
+        try_files \$uri =404;
         fastcgi_pass unix:/run/php/php8.1-fpm.sock;
         include fastcgi_params;
-        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;
     }
-'
+EOF
+)
 
 # Backup original config
 cp "$NGINX_CONFIG" "${NGINX_CONFIG}.backup-$(date +%Y%m%d-%H%M%S)"

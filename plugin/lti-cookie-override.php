@@ -39,8 +39,9 @@ if (!function_exists('wp_set_auth_cookie')) {
             $secure = is_ssl();
         }
 
-        // For LTI contexts, force secure
-        if ($is_lti) {
+        // For LTI contexts, only force secure if we are already on HTTPS
+        // Browsers REJECT Secure cookies over plain HTTP
+        if ($is_lti && is_ssl()) {
             $secure = true;
         }
 
@@ -60,7 +61,8 @@ if (!function_exists('wp_set_auth_cookie')) {
         }
 
         // Set cookies with SameSite=None for LTI contexts
-        if ($is_lti && PHP_VERSION_ID >= 70300) {
+        // ONLY if HTTPS is being used, because browsers REJECT SameSite=None without Secure
+        if ($is_lti && PHP_VERSION_ID >= 70300 && is_ssl()) {
             // PHP 7.3+ with SameSite support
             setcookie( $auth_cookie_name, $auth_cookie, [
                 'expires' => $expire,

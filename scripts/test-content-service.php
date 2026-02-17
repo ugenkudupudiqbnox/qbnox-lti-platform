@@ -8,7 +8,7 @@ define('CLI_SCRIPT', true);
 define('WP_USE_THEMES', false);
 
 // Load WordPress from Bedrock structure
-require_once('/var/www/html/web/wp/wp-load.php');
+require_once('/var/www/pressbooks/web/wp/wp-load.php');
 
 // Load ContentService
 require_once('/var/www/html/web/app/plugins/pressbooks-lti-platform/Services/ContentService.php');

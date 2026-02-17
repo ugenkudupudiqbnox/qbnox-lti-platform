@@ -38,18 +38,28 @@ class CookieManager {
         // Set session cookie parameters for SameSite=None
         if (PHP_VERSION_ID >= 70300) {
             // PHP 7.3+ supports options array
-            session_set_cookie_params([
+            $options = [
                 'lifetime' => 0,
                 'path' => '/',
                 'domain' => $_SERVER['HTTP_HOST'] ?? '',
-                'secure' => true,
                 'httponly' => true,
-                'samesite' => 'None'
-            ]);
+            ];
+
+            // SameSite=None REQUIRES Secure flag
+            // Modern browsers REJECT Secure cookies over plain HTTP
+            if (is_ssl()) {
+                $options['secure']   = true;
+                $options['samesite'] = 'None';
+            } else {
+                $options['secure']   = false;
+                $options['samesite'] = 'Lax'; // Default fallback
+            }
+
+            session_set_cookie_params($options);
         } else {
             // PHP < 7.3: use legacy function
-            // Note: Can't set SameSite directly, will handle in header rewrite
-            session_set_cookie_params(0, '/', $_SERVER['HTTP_HOST'] ?? '', true, true);
+            $secure = is_ssl();
+            session_set_cookie_params(0, '/', $_SERVER['HTTP_HOST'] ?? '', $secure, true);
         }
 
         error_log('[PB-LTI CookieManager] Session cookie params configured');
@@ -95,13 +105,21 @@ class CookieManager {
                     $cookie_string = substr($header, strlen('Set-Cookie: '));
 
                     // Add SameSite=None if not already present
-                    if (stripos($cookie_string, 'samesite') === false) {
-                        $cookie_string .= '; SameSite=None';
-                    }
+                    // ONLY if we are on HTTPS, because browsers REJECT SameSite=None without Secure
+                    if (is_ssl()) {
+                        if (stripos($cookie_string, 'samesite') === false) {
+                            $cookie_string .= '; SameSite=None';
+                        }
 
-                    // Ensure Secure flag is present (required for SameSite=None)
-                    if (stripos($cookie_string, 'secure') === false) {
-                        $cookie_string .= '; Secure';
+                        // Ensure Secure flag is present (required for SameSite=None)
+                        if (stripos($cookie_string, 'secure') === false) {
+                            $cookie_string .= '; Secure';
+                        }
+                    } else {
+                        // On HTTP, we MUST NOT use SameSite=None or browsers will reject our cookies
+                        if (stripos($cookie_string, 'samesite') === false) {
+                            $cookie_string .= '; SameSite=Lax';
+                        }
                     }
 
                     // Set the modified cookie header
@@ -141,33 +159,36 @@ class CookieManager {
      */
     public static function set_custom_auth_cookie($auth_cookie, $expire, $expiration, $user_id, $scheme) {
         $auth_cookie_name = $scheme === 'secure_auth' ? SECURE_AUTH_COOKIE : AUTH_COOKIE;
+        $is_secure = is_ssl();
 
         setcookie($auth_cookie_name, $auth_cookie, [
             'expires' => $expire,
             'path' => ADMIN_COOKIE_PATH,
             'domain' => COOKIE_DOMAIN,
-            'secure' => true,
+            'secure' => $is_secure,
             'httponly' => true,
-            'samesite' => 'None'
+            'samesite' => $is_secure ? 'None' : 'Lax'
         ]);
 
-        error_log('[PB-LTI CookieManager] Set custom auth cookie: ' . $auth_cookie_name);
+        error_log('[PB-LTI CookieManager] Set custom auth cookie: ' . $auth_cookie_name . ($is_secure ? ' (SameSite=None)' : ' (SameSite=Lax)'));
     }
 
     /**
      * Set logged-in cookie with SameSite=None
      */
     public static function set_custom_logged_in_cookie($logged_in_cookie, $expire, $expiration, $user_id, $scheme) {
+        $is_secure = is_ssl();
+
         setcookie(LOGGED_IN_COOKIE, $logged_in_cookie, [
             'expires' => $expire,
             'path' => COOKIEPATH,
             'domain' => COOKIE_DOMAIN,
-            'secure' => true,
+            'secure' => $is_secure,
             'httponly' => true,
-            'samesite' => 'None'
+            'samesite' => $is_secure ? 'None' : 'Lax'
         ]);
 
-        error_log('[PB-LTI CookieManager] Set custom logged-in cookie');
+        error_log('[PB-LTI CookieManager] Set custom logged-in cookie' . ($is_secure ? ' (SameSite=None)' : ' (SameSite=Lax)'));
     }
 
     /**

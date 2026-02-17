@@ -1,7 +1,10 @@
-.PHONY: up install-pressbooks install enable-lti seed seed-books test test-deep-linking test-ags collect-artifacts clean
+.PHONY: up install-pressbooks install enable-lti seed seed-books simulate-ags test-deep-linking test-ags credentials setup-nginx
 
 all:
-	make up install-pressbooks install enable-lti seed seed-books test-deep-linking test-ags
+	make setup-nginx up install-pressbooks install enable-lti seed seed-books simulate-ags test-deep-linking test-ags credentials
+
+setup-nginx:
+	sudo bash scripts/setup-local-nginx.sh
 
 up:
 	bash scripts/lab-up.sh
@@ -22,6 +25,12 @@ seed:
 seed-books:
 	bash scripts/seed-pressbooks.sh
 
+simulate-ags:
+	sudo docker cp scripts/create-ags-activity.php moodle:/tmp/
+	sudo docker cp scripts/simulate-ags-grade.php moodle:/tmp/
+	sudo docker exec moodle php /tmp/create-ags-activity.php
+	sudo docker exec moodle php /tmp/simulate-ags-grade.php
+
 test:
 	bash scripts/lti-smoke-test.sh
 
@@ -30,6 +39,9 @@ test-deep-linking:
 
 test-ags:
 	bash scripts/ci-test-ags-grade.sh
+
+credentials:
+	bash scripts/show-credentials.sh
 
 collect-artifacts:
 	bash scripts/ci-collect-artifacts.sh

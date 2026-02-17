@@ -3,6 +3,11 @@ define('CLI_SCRIPT', true);
 require_once('/var/www/html/config.php');
 require_once($CFG->dirroot.'/course/lib.php');
 require_once($CFG->dirroot.'/mod/lti/lib.php');
+require_once($CFG->libdir.'/gradelib.php');
+
+// Load environment
+$pressbooks_url = getenv('PRESSBOOKS_URL') ?: 'http://pressbooks.local:8081';
+$pressbooks_url = rtrim($pressbooks_url, '/');
 
 echo "=== Creating AGS Graded Assignment ===\n\n";
 
@@ -37,7 +42,7 @@ $existing_cm = $DB->get_record_sql(
 
 if ($existing_cm) {
     echo "✓ AGS activity already exists\n";
-    echo "  URL: https://moodle.lti.qbnox.com/mod/lti/view.php?id={$existing_cm->id}\n";
+    echo "  URL: " . $CFG->wwwroot . "/mod/lti/view.php?id={$existing_cm->id}\n";
     exit(0);
 }
 
@@ -48,7 +53,7 @@ $lti->name = 'AGS Graded Assignment';
 $lti->intro = 'Test Assignment & Grade Services grade passback';
 $lti->introformat = FORMAT_HTML;
 $lti->typeid = $tool->id;
-$lti->toolurl = 'https://pb.lti.qbnox.com/';
+$lti->toolurl = $pressbooks_url . '/';
 $lti->instructorchoicesendname = 1;
 $lti->instructorchoicesendemailaddr = 1;
 $lti->instructorchoiceacceptgrades = 1; // Enable grade passback
@@ -91,5 +96,33 @@ echo "✓ Added to course section\n";
 rebuild_course_cache($course->id, true);
 echo "✓ Course cache rebuilt\n";
 
+// Ensure grade item exists with correct itemnumber to avoid Moodle exceptions
+echo "✓ Initializing grade item...\n";
+$grade_item = $DB->get_record('grade_items', [
+    'courseid' => $course->id,
+    'itemtype' => 'mod',
+    'itemmodule' => 'lti',
+    'iteminstance' => $lti_id
+]);
+
+if (!$grade_item) {
+    $grade_item = new grade_item();
+    $grade_item->courseid = $course->id;
+    $grade_item->itemtype = 'mod';
+    $grade_item->itemmodule = 'lti';
+    $grade_item->iteminstance = $lti_id;
+    $grade_item->itemnumber = 0;
+    $grade_item->itemname = $lti->name;
+    $grade_item->gradetype = GRADE_TYPE_VALUE;
+    $grade_item->grademax = $lti->grade;
+    $grade_item->grademin = 0;
+    $grade_item->insert();
+    echo "  ✓ Grade item created with itemnumber 0\n";
+} else if ($grade_item->itemnumber === null) {
+    $grade_item->itemnumber = 0;
+    $grade_item->update();
+    echo "  ✓ Grade item updated with itemnumber 0\n";
+}
+
 echo "\n=== Success! ===\n";
-echo "AGS Test URL: https://moodle.lti.qbnox.com/mod/lti/view.php?id={$cmid}\n";
+echo "AGS Test URL: " . $CFG->wwwroot . "/mod/lti/view.php?id={$cmid}\n";

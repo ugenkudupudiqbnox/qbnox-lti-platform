@@ -28,12 +28,12 @@ mkdir -p /var/www/certbot
 echo "📝 Installing HTTP-only nginx configurations (for certbot challenge)..."
 
 # Copy HTTP-only configs
-cp "$SCRATCHPAD/moodle-lti-qbnox-http-only.conf" /etc/nginx/sites-available/moodle.lti.qbnox.com
-cp "$SCRATCHPAD/pb-lti-qbnox-http-only.conf" /etc/nginx/sites-available/pb.lti.qbnox.com
+cp "$SCRATCHPAD/moodle-lti-qbnox-http-only.conf" /etc/nginx/sites-available/${MOODLE_DOMAIN}
+cp "$SCRATCHPAD/pb-lti-qbnox-http-only.conf" /etc/nginx/sites-available/${PRESSBOOKS_DOMAIN}
 
 # Enable sites
-ln -sf /etc/nginx/sites-available/moodle.lti.qbnox.com /etc/nginx/sites-enabled/
-ln -sf /etc/nginx/sites-available/pb.lti.qbnox.com /etc/nginx/sites-enabled/
+ln -sf /etc/nginx/sites-available/${MOODLE_DOMAIN} /etc/nginx/sites-enabled/
+ln -sf /etc/nginx/sites-available/${PRESSBOOKS_DOMAIN} /etc/nginx/sites-enabled/
 
 # Test nginx configuration
 echo "🧪 Testing nginx configuration..."
@@ -68,7 +68,7 @@ echo "3. Obtain SSL certificates:"
 echo "   certbot --nginx -d ${MOODLE_DOMAIN} -d ${PRESSBOOKS_DOMAIN}"
 echo ""
 echo "4. After SSL is obtained, install HTTPS configs:"
-echo "   sudo cp $SCRATCHPAD/moodle-lti-qbnox.conf /etc/nginx/sites-available/moodle.lti.qbnox.com"
-echo "   sudo cp $SCRATCHPAD/pb-lti-qbnox.conf /etc/nginx/sites-available/pb.lti.qbnox.com"
+echo "   sudo cp $SCRATCHPAD/moodle-lti-qbnox.conf /etc/nginx/sites-available/${MOODLE_DOMAIN}"
+echo "   sudo cp $SCRATCHPAD/pb-lti-qbnox.conf /etc/nginx/sites-available/${PRESSBOOKS_DOMAIN}"
 echo "   sudo nginx -t && sudo systemctl reload nginx"
 echo ""

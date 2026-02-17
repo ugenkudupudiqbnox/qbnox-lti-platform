@@ -105,9 +105,10 @@ class H5PResultsManager {
      * @param int $post_id Chapter post ID
      * @param int $h5p_id H5P content ID
      * @param string $grading_scheme Grading scheme (best, average, first, last)
+     * @param array|null $current_data Current result data ['score' => float, 'max_score' => float]
      * @return array ['score' => float, 'max_score' => float]
      */
-    public static function calculate_score($user_id, $post_id, $h5p_id, $grading_scheme) {
+    public static function calculate_score($user_id, $post_id, $h5p_id, $grading_scheme, $current_data = null) {
         global $wpdb;
 
         // Get all attempts for this user and H5P content
@@ -119,6 +120,15 @@ class H5PResultsManager {
             $user_id,
             $h5p_id
         ), ARRAY_A);
+
+        // Include the current result being saved via the H5P hook (prevents 0/0 on first attempt)
+        if ($current_data) {
+            $attempts[] = [
+                'score' => $current_data['score'],
+                'max_score' => $current_data['max_score'] ?? 100,
+                'finished' => time() // Assume finished now
+            ];
+        }
 
         if (empty($attempts)) {
             return ['score' => 0, 'max_score' => 0];
@@ -138,10 +148,12 @@ class H5PResultsManager {
 
             case self::GRADING_AVERAGE:
                 $total = 0;
+                $count = 0;
                 foreach ($attempts as $attempt) {
                     $total += $attempt['score'];
+                    $count++;
                 }
-                $average = $total / count($attempts);
+                $average = ($count > 0) ? ($total / $count) : 0;
                 return ['score' => $average, 'max_score' => $max_score];
 
             case self::GRADING_FIRST:
@@ -167,9 +179,11 @@ class H5PResultsManager {
      *
      * @param int $user_id WordPress user ID
      * @param int $post_id Chapter post ID
+     * @param int|null $current_h5p_id H5P content ID currently being saved (optional)
+     * @param array|null $current_data Current result data (optional: ['score' => float, 'max_score' => float])
      * @return array ['score' => float, 'max_score' => float, 'percentage' => float]
      */
-    public static function calculate_chapter_score($user_id, $post_id) {
+    public static function calculate_chapter_score($user_id, $post_id, $current_h5p_id = null, $current_data = null) {
         $config = self::get_configuration($post_id);
         $configured_activities = self::get_configured_activities($post_id);
 
@@ -183,12 +197,21 @@ class H5PResultsManager {
         $total_weight = 0;
 
         foreach ($configured_activities as $activity) {
+            // Check if this activity is the one currently being saved
+            $activity_current_data = ($current_h5p_id == $activity['h5p_id']) ? $current_data : null;
+
             $result = self::calculate_score(
                 $user_id,
                 $post_id,
                 $activity['h5p_id'],
-                $activity['grading_scheme']
+                $activity['grading_scheme'],
+                $activity_current_data
             );
+
+            if ($result['max_score'] <= 0) {
+                // Skip activities with no questions/no results
+                continue;
+            }
 
             if ($config['aggregate'] === 'weighted') {
                 $weight = $activity['weight'];

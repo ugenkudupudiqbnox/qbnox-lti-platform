@@ -49,6 +49,9 @@ services:
       - moodledata:/var/moodledata
     ports:
       - "8080:80"
+    extra_hosts:
+      - "moodle.local:host-gateway"
+      - "pressbooks.local:host-gateway"
     networks:
       - lti-net
     healthcheck:
@@ -73,7 +76,7 @@ services:
       DB_PASSWORD: root
       DB_HOST: mysql
       WP_HOME: ${PRESSBOOKS_URL:-http://localhost:8081}
-      DOMAIN_CURRENT_SITE: ${PRESSBOOKS_DOMAIN:-localhost}
+      DOMAIN_CURRENT_SITE: ${PRESSBOOKS_INTERNAL_DOMAIN:-localhost}
       WP_ADMIN_USER: admin
       WP_ADMIN_PASSWORD: admin
       WP_ADMIN_EMAIL: admin@example.com
@@ -83,6 +86,9 @@ services:
       - ../plugin:/var/www/pressbooks/web/app/plugins/pressbooks-lti-platform
     ports:
       - "8081:80"
+    extra_hosts:
+      - "moodle.local:host-gateway"
+      - "pressbooks.local:host-gateway"
     networks:
       - lti-net
     healthcheck:

@@ -1,6 +1,6 @@
 <?php
 define('WP_USE_THEMES', false);
-require('/var/www/html/web/wp/wp-load.php');
+require('/var/www/pressbooks/web/wp/wp-load.php');
 
 global $wpdb;
 

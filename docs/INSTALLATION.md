@@ -61,11 +61,101 @@ docker-compose down -v
 docker-compose up -d
 ```
 
+### Production Environment Configuration (.env)
+
+When deploying to a production or staging environment (instead of `.local`), developers must configure a `.env` file in the project root. This ensures that the automated scripts for registration, grade sync testing, and CORS setup use the correct domains and protocol.
+
+1. **Create the .env file**:
+   ```bash
+   cp lti-local-lab/.env.production .env
+   ```
+
+2. **Configure Variables**:
+   Update the following variables in your `.env`:
+
+   ```dotenv
+   # Protocol to use (https for production)
+   PROTOCOL=https
+
+   # Your Moodle domain
+   MOODLE_DOMAIN=moodle.yourdomain.com
+   MOODLE_URL=https://moodle.yourdomain.com
+
+   # Your Pressbooks domain
+   PRESSBOOKS_DOMAIN=pb.yourdomain.com
+   PRESSBOOKS_URL=https://pb.yourdomain.com
+   ```
+
+### Nginx Reverse Proxy Configuration (Production Hardening)
+
+For production environments, Nginx must be configured as a reverse proxy with specific headers to ensure that LTI 1.3 launches (which rely on secure signed cookies and JWTs) function correctly behind the proxy.
+
+#### Crucial Proxy Headers
+Add these to your Nginx `location /` block:
+
+```nginx
+# Ensure Pressbooks/Moodle detect the correct protocol (HTTPS)
+proxy_set_header X-Forwarded-Proto $scheme;
+proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+proxy_set_header Host $http_host;
+
+# Cookie Privacy (required for LTI frames)
+proxy_cookie_path / "/; SameSite=None; Secure";
+
+# Required for LTI embedding
+# Prevent Moodle from blocking the Pressbooks iframe
+proxy_hide_header X-Frame-Options; 
+# Allow Moodle domains to embed this site
+add_header Content-Security-Policy "frame-ancestors 'self' *.yourdomain.com moodle.yourdomain.com";
+```
+
+### Diagnostics & Pre-flight
+To verify your environment is correctly configured before attempting a production LTI registration, run:
+```bash
+bash scripts/doctor.sh
+```
+
 ---
 
 ## For End Users - Manual Installation
 
 This section is for users with **existing Moodle and Pressbooks installations**.
+
+### 1. Perform LTI 1.3 Handshake
+
+To enable LTI communication, you must register the platforms in each other.
+
+#### Part 1: Register Pressbooks in Moodle
+1. Log in to Moodle as **Site Administrator**.
+2. Go to **Site administration > Plugins > Activity modules > External tool > Manage tools**.
+3. Click **configure a tool manually**.
+4. Fill in these details (Replace `https://pb.example.com` with your Pressbooks URL):
+   - **Tool name**: `Pressbooks LTI Platform`
+   - **Tool URL**: `https://pb.example.com/`
+   - **LTI version**: `LTI 1.3`
+   - **Public key type**: `JWK Keyset`
+   - **Public keyset**: `https://pb.example.com/wp-json/pb-lti/v1/keyset`
+   - **Initiate login URL**: `https://pb.example.com/wp-json/pb-lti/v1/login`
+   - **Redirection URI(s)**: `https://pb.example.com/wp-json/pb-lti/v1/launch`
+   - **Content Selection URL**: `https://pb.example.com/wp-json/pb-lti/v1/deep-link` (Check "Supports Deep Linking")
+5. **Services**:
+   - **IMS LTI Assignment and Grade Services**: `Use this service for grade sync and column management`
+   - **IMS LTI Names and Role Provisioning**: `Request user's name and email`
+6. **Privacy**:
+   - **Share launcher's name with tool**: `Always`
+   - **Share launcher's email with tool**: `Always`
+   - **Accept grades from the tool**: `Delegate to teacher` (This enables the "Allow adding grades" checkbox in activity settings).
+
+#### Part 2: Register Moodle in Pressbooks
+After saving the tool in Moodle, click the **Deployment icon** (the list icon) for the new tool to see the **Client ID** and **Deployment ID**. Register these in Pressbooks.
+
+**Via CLI (Recommended):**
+```bash
+# Run this on your Pressbooks server
+php scripts/pressbooks-register-platform.php "https://your-moodle.com" "YOUR_CLIENT_ID" "YOUR_DEPLOYMENT_ID"
+```
+
+For more detailed setup and troubleshooting, see the [User Guide](USER_GUIDE.md).
 
 ### System Requirements
 
@@ -479,7 +569,7 @@ curl -I https://your-domain.com/wp-json/pb-lti/v1/keyset
 ## Next Steps
 
 After successful installation:
-1. 📋 [Configure Moodle Integration](./MOODLE_INTEGRATION.md)
+1. 📋 [Manual Handshake & Configuration](USER_GUIDE.md)
 2. 🔧 [Configure LTI Settings](./CONFIGURATION.md)
 3. 🧪 [Test LTI Launch](./TESTING.md)
 4. 📊 [Set Up Grade Passback](./GRADE_PASSBACK.md)
