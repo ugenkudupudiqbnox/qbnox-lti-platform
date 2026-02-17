@@ -57,10 +57,11 @@ update_env_var WP_HOME "$WP_HOME"
 # Install multisite if needed
 if ! mysql -h"$DB_HOST" -u"$DB_USER" -p"$DB_PASSWORD" --ssl-mode=DISABLED "$DB_NAME" -e "SHOW TABLES LIKE 'wp_users';" 2>/dev/null | grep -q 'wp_users'; then
   echo "Installing WordPress Multisite"
-  # Temporarily disable MULTISITE in .env to allow installer to run
-  sed -i "s/^MULTISITE=.*/MULTISITE=false/" .env || true
+  # CRITICAL: Force MULTISITE to false to allow the installer to run without trying to load multisite tables
+  update_env_var MULTISITE false
+  export MULTISITE=false
 
-  # Run installation using a URL override to ensure the correct site is created
+  # Run installation. We use --skip-plugins and --skip-themes to minimize bootstrap overhead.
   wp core multisite-install \
     --url="$WP_HOME" \
     --title="Pressbooks Network" \
@@ -68,18 +69,14 @@ if ! mysql -h"$DB_HOST" -u"$DB_USER" -p"$DB_PASSWORD" --ssl-mode=DISABLED "$DB_N
     --admin_password="$WP_ADMIN_PASSWORD" \
     --admin_email="$WP_ADMIN_EMAIL" \
     --skip-email \
+    --skip-plugins \
     --allow-root
 fi
 
-# Ensure multisite is enabled in .env
-echo "Configuring Multisite environment variables..."
-update_env_var MULTISITE true
-update_env_var WP_ALLOW_MULTISITE true
-update_env_var SUBDOMAIN_INSTALL false
-update_env_var DOMAIN_CURRENT_SITE "$DOMAIN_CURRENT_SITE"
-update_env_var PATH_CURRENT_SITE /
-update_env_var SITE_ID_CURRENT_SITE 1
-update_env_var BLOG_ID_CURRENT_SITE 1
+# Ensure multisite is disabled during domain migration to hide multisite logic from WP-CLI bootstrap
+# We'll re-enable it AFTER we ensure the database is synchronized with the current environment domain.
+update_env_var MULTISITE false
+export MULTISITE=false
 
 # If the database exists but the domain has changed, we must update the database to match DOMAIN_CURRENT_SITE
 # This avoids the "Site not found" error when switching from localhost to a production domain
@@ -92,8 +89,24 @@ if mysql -h"$DB_HOST" -u"$DB_USER" -p"$DB_PASSWORD" --ssl-mode=DISABLED "$DB_NAM
     mysql -h"$DB_HOST" -u"$DB_USER" -p"$DB_PASSWORD" --ssl-mode=DISABLED "$DB_NAME" -e "UPDATE wp_options SET option_value='http://$DOMAIN_CURRENT_SITE' WHERE option_name IN ('siteurl', 'home');"
     # For Bedrock /subdirectory installs
     mysql -h"$DB_HOST" -u"$DB_USER" -p"$DB_PASSWORD" --ssl-mode=DISABLED "$DB_NAME" -e "UPDATE wp_sitemeta SET meta_value='http://$DOMAIN_CURRENT_SITE' WHERE meta_key='siteurl';"
+    # Clear caches that might hold the old domain
+    echo "🧹 Wiping cached object data..."
+    mysql -h"$DB_HOST" -u"$DB_USER" -p"$DB_PASSWORD" --ssl-mode=DISABLED "$DB_NAME" -e "DELETE FROM wp_options WHERE option_name LIKE '_transient_%';"
   fi
 fi
+
+# Ensure multisite is enabled in .env
+echo "🚀 Configuring Multisite environment variables..."
+update_env_var MULTISITE true
+update_env_var WP_ALLOW_MULTISITE true
+update_env_var SUBDOMAIN_INSTALL false
+update_env_var DOMAIN_CURRENT_SITE "$DOMAIN_CURRENT_SITE"
+update_env_var PATH_CURRENT_SITE /
+update_env_var SITE_ID_CURRENT_SITE 1
+update_env_var BLOG_ID_CURRENT_SITE 1
+
+# Export it so subsequent wp commands in this session use multisite mode
+export MULTISITE=true
 
 # Network activate Pressbooks
 wp plugin activate pressbooks --network --url="$WP_HOME" --path="$WP_PATH" --allow-root || true
