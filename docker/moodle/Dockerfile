@@ -43,7 +43,9 @@ RUN a2enmod rewrite headers ssl
 WORKDIR /var/www/html
 
 # Download Moodle
-RUN curl -L https://github.com/moodle/moodle/archive/refs/heads/MOODLE_403_STABLE.tar.gz -o moodle.tar.gz \
+ARG MOODLE_BRANCH=MOODLE_404_STABLE
+RUN echo "Downloading Moodle branch: ${MOODLE_BRANCH}" \
+    && curl -L https://github.com/moodle/moodle/archive/refs/heads/${MOODLE_BRANCH}.tar.gz -o moodle.tar.gz \
     && tar -xzf moodle.tar.gz --strip-components=1 \
     && rm moodle.tar.gz \
     && chown -R www-data:www-data /var/www/html

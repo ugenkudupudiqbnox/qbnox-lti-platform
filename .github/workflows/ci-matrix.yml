@@ -10,6 +10,9 @@ jobs:
       matrix:
         moodle: ["4.4"]
     env:
+      # This environment variable is used by subsequent steps in the workflow, such as test runners 
+      # (e.g., PHPUnit, Behat) or setup scripts, to identify and pull the specific version of 
+      # Moodle core required for this matrix job's execution environment.
       MOODLE_VERSION: ${{ matrix.moodle }}
     steps:
       - uses: actions/checkout@v4

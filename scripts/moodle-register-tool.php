@@ -63,10 +63,19 @@ $config->key_set_url = $jwks_url;
 $config->initiate_login_url = $login_url;
 $config->redirection_uris = $redirect_uri;
 
-// Moodle 4.x constants and field names
-$config->lti_keytype = 'JWK_KEYSET';
-$config->lti_publickeyset = $jwks_url;
-$config->lti_pubkey2 = $jwks_url; // Backward compatibility
+// Determine version specific constants
+$moodle_version = (float) $CFG->release;
+echo "Moodle Version Detected: $moodle_version (Release: $CFG->release)\n";
+
+// In Moodle 4.3+, these strings are preferred. In older versions, integers are safer.
+if ($moodle_version >= 4.3) {
+    $config->lti_keytype = 'JWK_KEYSET';
+    $config->lti_publickeyset = $jwks_url;
+} else {
+    $config->lti_keytype = 2; // Keyset URL in older Moodle
+    $config->lti_pubkey2 = $jwks_url;
+}
+
 $config->lti_pubkey = ''; // Clear RSA key if any
 $config->lti_initiatelogin = $login_url;
 $config->lti_redirectionuris = $redirect_uri;

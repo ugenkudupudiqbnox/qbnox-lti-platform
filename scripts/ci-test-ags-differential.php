@@ -2,7 +2,10 @@
 <?php
 define('CLI_SCRIPT', true);
 require_once('/var/www/html/config.php');
-global $DB;
+global $DB, $CFG;
+
+$moodle_version = get_config('', 'version');
+echo "🧪 Running AGS Differential test on Moodle version: " . $moodle_version . "\n";
 
 // Verify instructors have grade capability, students only grade receipt
 $records = $DB->get_records_sql("

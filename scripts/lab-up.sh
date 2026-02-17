@@ -4,6 +4,17 @@ set -e
 # Load environment configuration
 source "$(dirname "$0")/load-env.sh"
 
+# Set default Moodle version and convert to Moodle branch format (e.g. 4.4 -> MOODLE_404_STABLE)
+MOODLE_VERSION="${MOODLE_VERSION:-4.4}"
+if [[ "$MOODLE_VERSION" =~ ^[0-9]+\.[0-9]+$ ]]; then
+    MAJOR=$(echo $MOODLE_VERSION | cut -d. -f1)
+    MINOR=$(echo $MOODLE_VERSION | cut -d. -f2)
+    export MOODLE_BRANCH="MOODLE_${MAJOR}0${MINOR}_STABLE"
+else
+    export MOODLE_BRANCH="${MOODLE_VERSION}"
+fi
+echo "🚀 Using Moodle version $MOODLE_VERSION (Branch: $MOODLE_BRANCH)"
+
 # === Installation Steps ===
 
 # 1. Check for Docker Engine and install if missing
