@@ -52,6 +52,11 @@ update_env_var DB_NAME "$DB_NAME"
 update_env_var DB_USER "$DB_USER"
 update_env_var DB_PASSWORD "$DB_PASSWORD"
 update_env_var DB_HOST "$DB_HOST"
+
+# Strip trailing slashes from domain variables
+WP_HOME=${WP_HOME%/}
+DOMAIN_CURRENT_SITE=${DOMAIN_CURRENT_SITE%/}
+
 update_env_var WP_HOME "$WP_HOME"
 
 # Install multisite if needed
@@ -103,11 +108,16 @@ if mysql -h"$DB_HOST" -u"$DB_USER" -p"$DB_PASSWORD" --ssl-mode=DISABLED "$DB_NAM
   CURRENT_DB_DOMAIN=$(mysql -h"$DB_HOST" -u"$DB_USER" -p"$DB_PASSWORD" --ssl-mode=DISABLED "$DB_NAME" -N -s -e "SELECT domain FROM wp_site WHERE id=1;")
   if [ -n "$OLD_DCS" ] && [ "$CURRENT_DB_DOMAIN" != "$OLD_DCS" ]; then
     echo "🌍 Domain change detected ($CURRENT_DB_DOMAIN -> $OLD_DCS). Updating database..."
+    
+    # Extract protocol from WP_HOME or default to https
+    PROTO="https"
+    if [[ "$WP_HOME" == http://* ]]; then PROTO="http"; fi
+    
     mysql -h"$DB_HOST" -u"$DB_USER" -p"$DB_PASSWORD" --ssl-mode=DISABLED "$DB_NAME" -e "UPDATE wp_site SET domain='$OLD_DCS' WHERE id=1;"
     mysql -h"$DB_HOST" -u"$DB_USER" -p"$DB_PASSWORD" --ssl-mode=DISABLED "$DB_NAME" -e "UPDATE wp_blogs SET domain='$OLD_DCS' WHERE blog_id=1;"
-    mysql -h"$DB_HOST" -u"$DB_USER" -p"$DB_PASSWORD" --ssl-mode=DISABLED "$DB_NAME" -e "UPDATE wp_options SET option_value='http://$OLD_DCS' WHERE option_name IN ('siteurl', 'home');"
+    mysql -h"$DB_HOST" -u"$DB_USER" -p"$DB_PASSWORD" --ssl-mode=DISABLED "$DB_NAME" -e "UPDATE wp_options SET option_value='$WP_HOME' WHERE option_name IN ('siteurl', 'home');"
     # For Bedrock /subdirectory installs
-    mysql -h"$DB_HOST" -u"$DB_USER" -p"$DB_PASSWORD" --ssl-mode=DISABLED "$DB_NAME" -e "UPDATE wp_sitemeta SET meta_value='http://$OLD_DCS' WHERE meta_key='siteurl';"
+    mysql -h"$DB_HOST" -u"$DB_USER" -p"$DB_PASSWORD" --ssl-mode=DISABLED "$DB_NAME" -e "UPDATE wp_sitemeta SET meta_value='$WP_HOME' WHERE meta_key='siteurl';"
     # Clear caches that might hold the old domain
     echo "🧹 Wiping cached object data..."
     mysql -h"$DB_HOST" -u"$DB_USER" -p"$DB_PASSWORD" --ssl-mode=DISABLED "$DB_NAME" -e "DELETE FROM wp_options WHERE option_name LIKE '_transient_%';"
