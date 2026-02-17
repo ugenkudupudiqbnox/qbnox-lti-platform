@@ -3,3 +3,9 @@ lti-local-lab/.env
 plugin/vendor/
 *.backup
 *.suggested
+
+# Environment-specific files
+.env.production
+
+# Generated test outputs
+scripts/.jwt_output
