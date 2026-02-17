@@ -62,7 +62,8 @@ add_action('plugins_loaded', function () {
                         'kid' => 'pb-lti-2024',
                         'alg' => 'RS256',
                         'n' => $n,
-                        'e' => $e
+                        'e' => $e,
+                        'pem' => $key->public_key // Non-standard but helpful
                     ]
                 ]
             ];

@@ -34,17 +34,18 @@ if (!$key) {
     exit(1);
 }
 
-// Build PEM key
-$mod = base64_decode(strtr($key['n'], '-_', '+/'));
-$exp = base64_decode(strtr($key['e'], '-_', '+/'));
-$pubkey = openssl_pkey_get_details(openssl_pkey_new([
-    'rsa' => [
-        'n' => $mod,
-        'e' => $exp
-    ]
-]));
+if (!isset($key['pem'])) {
+    fwrite(STDERR, "JWKS entry missing 'pem' field for CI verification\n");
+    exit(1);
+}
 
-$verified = openssl_verify($data, $sig, $pubkey['key'], OPENSSL_ALGO_SHA256);
+$pubkey = openssl_pkey_get_public($key['pem']);
+if (!$pubkey) {
+    fwrite(STDERR, "Failed to load public key from PEM\n");
+    exit(1);
+}
+
+$verified = openssl_verify($data, $sig, $pubkey, OPENSSL_ALGO_SHA256);
 
 if ($verified !== 1) {
     fwrite(STDERR, "JWT signature invalid\n");
