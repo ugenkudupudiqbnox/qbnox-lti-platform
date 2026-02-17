@@ -10,9 +10,11 @@ if [ -f "$PROJECT_ROOT/.env" ]; then
     set +a
 fi
 
-# Set defaults
+# Set defaults (and strip trailing slashes if present)
 export MOODLE_DOMAIN=${MOODLE_DOMAIN:-moodle.local}
+export MOODLE_DOMAIN=${MOODLE_DOMAIN%/}
 export PRESSBOOKS_DOMAIN=${PRESSBOOKS_DOMAIN:-pressbooks.local}
+export PRESSBOOKS_DOMAIN=${PRESSBOOKS_DOMAIN%/}
 export MOODLE_VERSION=${MOODLE_VERSION:-4.4}
 
 # Logic for PROTOCOL: Use http for local domains, otherwise default to https
