@@ -7,6 +7,7 @@
   Minimal • Secure • Standards-Compliant LTI 1.3 Platform
 </p>
 
+[![CI](https://github.com/ugenkudupudiqbnox/qbnox-lti-platform/actions/workflows/ci-matrix.yml/badge.svg)](https://github.com/ugenkudupudiqbnox/qbnox-lti-platform/actions/workflows/ci-matrix.yml)
 ![License](https://img.shields.io/badge/license-MIT-red)
 ![LTI](https://img.shields.io/badge/LTI-1.3-orange)
 ![Open Source](https://img.shields.io/badge/Open%20Source-Yes-red)
