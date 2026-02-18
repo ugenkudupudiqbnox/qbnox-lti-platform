@@ -1,7 +1,7 @@
-.PHONY: up install-pressbooks install enable-lti seed seed-books simulate-ags test-deep-linking test-ags credentials setup-nginx
+.PHONY: up install-pressbooks install enable-lti seed seed-books install-h5p simulate-ags test-deep-linking test-ags credentials setup-nginx
 
 all:
-	make setup-nginx up install-pressbooks install enable-lti seed seed-books simulate-ags test-deep-linking test-ags credentials
+	make setup-nginx up install-pressbooks install enable-lti seed seed-books install-h5p simulate-ags test-deep-linking test-ags credentials
 
 setup-nginx:
 	sudo bash scripts/setup-nginx.sh
@@ -24,6 +24,9 @@ seed:
 
 seed-books:
 	bash scripts/seed-pressbooks.sh
+
+install-h5p:
+	bash scripts/install-h5p-libraries.sh
 
 simulate-ags:
 	sudo docker cp scripts/create-ags-activity.php moodle:/tmp/
