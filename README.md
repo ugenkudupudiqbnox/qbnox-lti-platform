@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/logo.png" width="180" alt="Qbnox LTI Platform Logo" />
+  <img src="artifacts/img/logo.png" width="180" alt="Qbnox LTI Platform Logo" />
 </p>
 
 <h1 align="center">Qbnox LTI 1.3 Support for Pressbooks</h1>
