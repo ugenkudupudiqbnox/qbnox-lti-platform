@@ -52,6 +52,7 @@ services:
     volumes:
       - moodle-data:/var/www/html
       - moodledata:/var/moodledata
+      - ./moodle-php.ini:/usr/local/etc/php/conf.d/zz-moodle-suppress-warnings.ini:ro
     ports:
       - "8080:80"
     extra_hosts:
