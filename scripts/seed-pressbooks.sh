@@ -35,13 +35,19 @@ BOOK_URL="${PRESSBOOKS_URL}/test-book"
 
 echo "📝 Creating test chapters in $BOOK_URL"
 
-# Create some chapters
+# Get the Main Body part ID (Pressbooks creates this automatically on site creation)
+PART_ID=$(sudo -E $DC exec -T pressbooks wp post list \
+  --post_type=part --fields=ID --format=csv --url="$BOOK_URL" --allow-root 2>/dev/null \
+  | tail -1 | tr -d '[:space:]')
+
+# Create chapters assigned to Main Body part so they appear in the book
 for i in {1..3}; do
   sudo -E $DC exec -T pressbooks wp post create \
     --post_type=chapter \
     --post_title="Chapter $i - LTI Content" \
     --post_content="This is chapter $i for LTI testing." \
     --post_status=publish \
+    --post_parent="$PART_ID" \
     --url="$BOOK_URL" \
     --allow-root
 done
