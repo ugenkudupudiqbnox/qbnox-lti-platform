@@ -47,10 +47,6 @@ if (!function_exists('wp_set_auth_cookie')) {
 
         $secure = apply_filters( 'secure_auth_cookie', $secure, $user_id );
         $secure_logged_in_cookie = apply_filters( 'secure_logged_in_cookie', ( $secure && is_ssl() ), $user_id, $secure );
-        $auth_cookie = wp_generate_auth_cookie( $user_id, $expiration, 'auth', $token );
-        $logged_in_cookie = wp_generate_auth_cookie( $user_id, $expiration, 'logged_in', $token );
-
-        do_action( 'set_auth_cookie', $auth_cookie, $expire, $expiration, $user_id, 'auth', $token );
 
         if ( $secure ) {
             $auth_cookie_name = SECURE_AUTH_COOKIE;
@@ -59,6 +55,11 @@ if (!function_exists('wp_set_auth_cookie')) {
             $auth_cookie_name = AUTH_COOKIE;
             $scheme = 'auth';
         }
+
+        $auth_cookie = wp_generate_auth_cookie( $user_id, $expiration, $scheme, $token );
+        $logged_in_cookie = wp_generate_auth_cookie( $user_id, $expiration, 'logged_in', $token );
+
+        do_action( 'set_auth_cookie', $auth_cookie, $expire, $expiration, $user_id, $scheme, $token );
 
         // Set cookies with SameSite=None for LTI contexts
         // ONLY if HTTPS is being used, because browsers REJECT SameSite=None without Secure
