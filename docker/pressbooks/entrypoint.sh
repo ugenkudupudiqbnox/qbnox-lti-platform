@@ -121,13 +121,22 @@ if mysql -h"$DB_HOST" -u"$DB_USER" -p"$DB_PASSWORD" --ssl-mode=DISABLED "$DB_NAM
     PROTO="https"
     if [[ "$WP_HOME" == http://* ]]; then PROTO="http"; fi
     
-    mysql -h"$DB_HOST" -u"$DB_USER" -p"$DB_PASSWORD" --ssl-mode=DISABLED "$DB_NAME" -e "UPDATE wp_site SET domain='$OLD_DCS' WHERE id=1;"
-    mysql -h"$DB_HOST" -u"$DB_USER" -p"$DB_PASSWORD" --ssl-mode=DISABLED "$DB_NAME" -e "UPDATE wp_blogs SET domain='$OLD_DCS' WHERE blog_id=1;"
-    # In Bedrock, 'home' = WP_HOME (public URL) and 'siteurl' = WP_HOME/wp (core subdirectory)
-    mysql -h"$DB_HOST" -u"$DB_USER" -p"$DB_PASSWORD" --ssl-mode=DISABLED "$DB_NAME" -e "UPDATE wp_options SET option_value='$WP_HOME' WHERE option_name='home';"
-    mysql -h"$DB_HOST" -u"$DB_USER" -p"$DB_PASSWORD" --ssl-mode=DISABLED "$DB_NAME" -e "UPDATE wp_options SET option_value='${WP_HOME}/wp' WHERE option_name='siteurl';"
-    # For Bedrock /subdirectory installs — wp_sitemeta.siteurl must also be WP_HOME/wp
-    mysql -h"$DB_HOST" -u"$DB_USER" -p"$DB_PASSWORD" --ssl-mode=DISABLED "$DB_NAME" -e "UPDATE wp_sitemeta SET meta_value='${WP_HOME}/wp' WHERE meta_key='siteurl';"
+    if [ "$PROTO" = "https" ]; then
+      mysql -h"$DB_HOST" -u"$DB_USER" -p"$DB_PASSWORD" --ssl-mode=DISABLED "$DB_NAME" -e "UPDATE wp_site SET domain='$OLD_DCS', path='/' WHERE id=1;"
+      mysql -h"$DB_HOST" -u"$DB_USER" -p"$DB_PASSWORD" --ssl-mode=DISABLED "$DB_NAME" -e "UPDATE wp_blogs SET domain='$OLD_DCS', path='/' WHERE blog_id=1;"
+      # Bedrock in production (behind proxy) needs these to stay root even if core is in /wp/
+      mysql -h"$DB_HOST" -u"$DB_USER" -p"$DB_PASSWORD" --ssl-mode=DISABLED "$DB_NAME" -e "UPDATE wp_options SET option_value='$WP_HOME' WHERE option_name='home';"
+      mysql -h"$DB_HOST" -u"$DB_USER" -p"$DB_PASSWORD" --ssl-mode=DISABLED "$DB_NAME" -e "UPDATE wp_options SET option_value='${WP_HOME}/wp' WHERE option_name='siteurl';"
+      mysql -h"$DB_HOST" -u"$DB_USER" -p"$DB_PASSWORD" --ssl-mode=DISABLED "$DB_NAME" -e "UPDATE wp_sitemeta SET meta_value='${WP_HOME}/wp' WHERE meta_key='siteurl';"
+    else
+      # Restore standard Bedrock behavior for local HTTP environments
+      mysql -h"$DB_HOST" -u"$DB_USER" -p"$DB_PASSWORD" --ssl-mode=DISABLED "$DB_NAME" -e "UPDATE wp_site SET domain='$OLD_DCS', path='/' WHERE id=1;"
+      mysql -h"$DB_HOST" -u"$DB_USER" -p"$DB_PASSWORD" --ssl-mode=DISABLED "$DB_NAME" -e "UPDATE wp_blogs SET domain='$OLD_DCS', path='/' WHERE blog_id=1;"
+      mysql -h"$DB_HOST" -u"$DB_USER" -p"$DB_PASSWORD" --ssl-mode=DISABLED "$DB_NAME" -e "UPDATE wp_options SET option_value='$WP_HOME' WHERE option_name='home';"
+      mysql -h"$DB_HOST" -u"$DB_USER" -p"$DB_PASSWORD" --ssl-mode=DISABLED "$DB_NAME" -e "UPDATE wp_options SET option_value='${WP_HOME}/wp' WHERE option_name='siteurl';"
+      mysql -h"$DB_HOST" -u"$DB_USER" -p"$DB_PASSWORD" --ssl-mode=DISABLED "$DB_NAME" -e "UPDATE wp_sitemeta SET meta_value='${WP_HOME}/wp' WHERE meta_key='siteurl';"
+    fi
+
     # Clear caches that might hold the old domain
     echo "🧹 Wiping cached object data..."
     mysql -h"$DB_HOST" -u"$DB_USER" -p"$DB_PASSWORD" --ssl-mode=DISABLED "$DB_NAME" -e "DELETE FROM wp_options WHERE option_name LIKE '_transient_%';"
@@ -140,7 +149,19 @@ update_env_var MULTISITE true
 update_env_var WP_ALLOW_MULTISITE true
 update_env_var SUBDOMAIN_INSTALL false
 update_env_var DOMAIN_CURRENT_SITE "$OLD_DCS"
-update_env_var PATH_CURRENT_SITE /
+
+if [ "$PROTO" = "https" ]; then
+  # FIX: These must be / even if WordPress is in the /wp/ directory (for SSL proxy)
+  update_env_var PATH_CURRENT_SITE /
+  update_env_var ADMIN_COOKIE_PATH /
+  update_env_var COOKIE_DOMAIN "$OLD_DCS"
+else
+  update_env_var PATH_CURRENT_SITE /
+  update_env_var ADMIN_COOKIE_PATH /
+  # COOKIE_DOMAIN should be empty or false for local dev to avoid path mismatches
+  update_env_var COOKIE_DOMAIN ""
+fi
+
 update_env_var SITE_ID_CURRENT_SITE 1
 update_env_var BLOG_ID_CURRENT_SITE 1
 
