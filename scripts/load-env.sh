@@ -20,6 +20,9 @@ export PRESSBOOKS_DOMAIN=${PRESSBOOKS_DOMAIN:-pressbooks.local}
 export PRESSBOOKS_DOMAIN=${PRESSBOOKS_DOMAIN%/}
 export MOODLE_VERSION=${MOODLE_VERSION:-4.4}
 export PROTOCOL=${PROTOCOL:-http}
+export PB_ADMIN_USER=${PB_ADMIN_USER:-admin}
+export PB_ADMIN_PASSWORD=${PB_ADMIN_PASSWORD:-admin}
+export PB_ADMIN_EMAIL=${PB_ADMIN_EMAIL:-admin@example.com}
 
 # With Nginx proxy on host, we use standard port 80/443
 export MOODLE_URL="${PROTOCOL}://${MOODLE_DOMAIN}"

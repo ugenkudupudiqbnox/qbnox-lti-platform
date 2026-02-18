@@ -10,9 +10,46 @@ WP_CONTAINER="pressbooks"
 
 WP_HOME="${PRESSBOOKS_URL}"
 WP_TITLE="Pressbooks Network"
-WP_ADMIN_USER="admin"
-WP_ADMIN_PASSWORD="admin"
-WP_ADMIN_EMAIL="admin@example.com"
+WP_ADMIN_USER="${PB_ADMIN_USER}"
+WP_ADMIN_PASSWORD="${PB_ADMIN_PASSWORD}"
+WP_ADMIN_EMAIL="${PB_ADMIN_EMAIL}"
+
+# Generate a random WordPress salt value
+generate_salt() {
+    openssl rand -base64 48 | tr -d "=+/\n" | cut -c1-64
+}
+
+# Ensure WordPress salts are present in .env; generate and append if missing
+ensure_wp_salts() {
+    local env_file="$PROJECT_ROOT/.env"
+    local salt_keys=(AUTH_KEY SECURE_AUTH_KEY LOGGED_IN_KEY NONCE_KEY AUTH_SALT SECURE_AUTH_SALT LOGGED_IN_SALT NONCE_SALT)
+    local missing=false
+
+    for key in "${salt_keys[@]}"; do
+        if ! grep -q "^${key}=" "$env_file" 2>/dev/null; then
+            missing=true
+            break
+        fi
+    done
+
+    if [ "$missing" = true ]; then
+        echo "🔐 Generating WordPress security keys (salts)..."
+        echo "" >> "$env_file"
+        echo "### --- 🔒 WordPress Security Keys (auto-generated) ---" >> "$env_file"
+        for key in "${salt_keys[@]}"; do
+            if ! grep -q "^${key}=" "$env_file" 2>/dev/null; then
+                echo "${key}='$(generate_salt)'" >> "$env_file"
+            fi
+        done
+        echo "✅ WordPress security keys written to .env"
+        # Re-export the newly generated values into the current shell
+        set -a
+        source "$env_file"
+        set +a
+    else
+        echo "✅ WordPress security keys already present in .env"
+    fi
+}
 
 retry() {
   local retries=$1; shift
@@ -35,6 +72,8 @@ else
 fi
 
 echo "🚀 Starting Pressbooks (Bedrock-aligned) setup"
+
+ensure_wp_salts
 
 retry 3 $DC up -d --build
 

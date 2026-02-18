@@ -79,9 +79,17 @@ services:
       DB_HOST: mysql
       WP_HOME: ${PRESSBOOKS_URL:-http://localhost:8081}
       DOMAIN_CURRENT_SITE: ${PRESSBOOKS_INTERNAL_DOMAIN:-localhost}
-      WP_ADMIN_USER: admin
-      WP_ADMIN_PASSWORD: admin
-      WP_ADMIN_EMAIL: admin@example.com
+      WP_ADMIN_USER: ${PB_ADMIN_USER:-admin}
+      WP_ADMIN_PASSWORD: ${PB_ADMIN_PASSWORD:-admin}
+      WP_ADMIN_EMAIL: ${PB_ADMIN_EMAIL:-admin@example.com}
+      AUTH_KEY: ${AUTH_KEY:-}
+      SECURE_AUTH_KEY: ${SECURE_AUTH_KEY:-}
+      LOGGED_IN_KEY: ${LOGGED_IN_KEY:-}
+      NONCE_KEY: ${NONCE_KEY:-}
+      AUTH_SALT: ${AUTH_SALT:-}
+      SECURE_AUTH_SALT: ${SECURE_AUTH_SALT:-}
+      LOGGED_IN_SALT: ${LOGGED_IN_SALT:-}
+      NONCE_SALT: ${NONCE_SALT:-}
     volumes:
       - pressbooks-data:/var/www/pressbooks
       # Plugin volume mount for hot-reload during development
