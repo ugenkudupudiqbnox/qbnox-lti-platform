@@ -172,11 +172,11 @@ fi
 
 cd lti-local-lab
 
-# Detect compose command
-if command -v docker-compose &> /dev/null; then
-  DC="docker-compose"
-elif docker compose version &> /dev/null; then
+# Detect compose command — prefer v2 (docker compose) over legacy v1 (docker-compose)
+if docker compose version &> /dev/null; then
   DC="docker compose"
+elif command -v docker-compose &> /dev/null; then
+  DC="docker-compose"
 else
   echo "❌ Error: Docker Compose is not functioning correctly."
   echo "Instructions to install manually: https://docs.docker.com/compose/install/"
@@ -216,6 +216,17 @@ until $SUDO $DC exec -T moodle php admin/cli/check_database_schema.php >/dev/nul
   sleep 5
 done
 echo "✅ Moodle is installed and ready"
+
+# Configure sslproxy for HTTPS reverse proxy setups
+if [[ "${PROTOCOL}" == "https" ]]; then
+    if ! $SUDO $DC exec -T moodle grep -q "sslproxy" /var/www/html/config.php; then
+        echo "🔒 Configuring Moodle for HTTPS reverse proxy (sslproxy)..."
+        $SUDO $DC exec -T moodle sed -i \
+            '/\$CFG->directorypermissions/a \$CFG->sslproxy = true;' \
+            /var/www/html/config.php
+        echo "✅ sslproxy configured"
+    fi
+fi
 
 # Wait for Pressbooks container to be running
 echo "➡ Waiting for Pressbooks"

@@ -65,10 +65,10 @@ retry() {
   done
 }
 
-if command -v docker-compose >/dev/null 2>&1; then
-  DC="$SUDO_DOCKER docker-compose -f $COMPOSE_FILE"
-else
+if docker compose version &>/dev/null 2>&1; then
   DC="$SUDO_DOCKER docker compose -f $COMPOSE_FILE"
+else
+  DC="$SUDO_DOCKER docker-compose -f $COMPOSE_FILE"
 fi
 
 echo "🚀 Starting Pressbooks (Bedrock-aligned) setup"

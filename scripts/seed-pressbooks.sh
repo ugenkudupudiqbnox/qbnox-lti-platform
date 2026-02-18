@@ -6,11 +6,11 @@ source "$(dirname "$0")/load-env.sh"
 
 echo "📘 Seeding Pressbooks with test book"
 
-# Use docker-compose to run commands
-if command -v docker-compose >/dev/null 2>&1; then
-    DC="docker-compose -f lti-local-lab/docker-compose.yml"
-else
+# Use docker compose v2 (plugin) preferentially over legacy v1
+if docker compose version &>/dev/null 2>&1; then
     DC="docker compose -f lti-local-lab/docker-compose.yml"
+else
+    DC="docker-compose -f lti-local-lab/docker-compose.yml"
 fi
 
 # Create book site if none exists
