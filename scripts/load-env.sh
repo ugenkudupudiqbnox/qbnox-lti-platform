@@ -8,9 +8,6 @@ if [ -f "$PROJECT_ROOT/.env" ]; then
     set -a
     source "$PROJECT_ROOT/.env"
     set +a
-else
-	echo ".env missing"
-	exit 1
 fi
 
 # Set defaults (and strip trailing slashes if present)
