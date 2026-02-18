@@ -17,14 +17,14 @@ echo -e "${GREEN}===============================================================
 
 echo -e "\n${CYAN}🎓 MOODLE (LMS)${NC}"
 echo -e "  URL:      ${YELLOW}${MOODLE_URL}${NC}"
-echo -e "  Admin:      admin / Moodle123!"
+echo -e "  Admin:      ${MOODLE_ADMIN_USER} / ${MOODLE_ADMIN_PASSWORD}"
 echo -e "  Instructor: instructor / moodle"
 echo -e "  Student:    student / moodle"
 echo -e "  Course:     LTI Testing Course (ID: 2)"
 
 echo -e "\n${CYAN}📖 PRESSBOOKS (Tool)${NC}"
 echo -e "  URL:      ${YELLOW}${PRESSBOOKS_URL}/wp-admin${NC}"
-echo -e "  Admin:    admin / admin"
+echo -e "  Admin:    ${PB_ADMIN_USER} / ${PB_ADMIN_PASSWORD}"
 echo -e "  Book:     LTI Test Book (${PRESSBOOKS_URL}/test-book)"
 
 echo -e "\n${CYAN}🗄️ INFRASTRUCTURE${NC}"

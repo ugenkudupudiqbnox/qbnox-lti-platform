@@ -22,9 +22,9 @@ if [ ! -f config.php ]; then
     --dbpass="$MYSQL_PASSWORD" \
     --wwwroot="${MOODLE_URL:-http://localhost:8080}" \
     --dataroot=/var/moodledata \
-    --adminuser=admin \
-    --adminpass=Moodle123! \
-    --adminemail=admin@example.com \
+    --adminuser="${MOODLE_ADMIN_USER:-admin}" \
+    --adminpass="${MOODLE_ADMIN_PASSWORD:-Moodle123!}" \
+    --adminemail="${MOODLE_ADMIN_EMAIL:-admin@example.com}" \
     --fullname="Moodle LTI Lab" \
     --shortname="Moodle" \
     --non-interactive \

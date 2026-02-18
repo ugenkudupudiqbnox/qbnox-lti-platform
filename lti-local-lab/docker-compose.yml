@@ -46,6 +46,9 @@ services:
       MYSQL_USER: root
       MYSQL_PASSWORD: root
       MOODLE_URL: ${MOODLE_URL:-http://localhost:8080}
+      MOODLE_ADMIN_USER: ${MOODLE_ADMIN_USER:-admin}
+      MOODLE_ADMIN_PASSWORD: ${MOODLE_ADMIN_PASSWORD:-Moodle123!}
+      MOODLE_ADMIN_EMAIL: ${MOODLE_ADMIN_EMAIL:-admin@example.com}
     volumes:
       - moodle-data:/var/www/html
       - moodledata:/var/moodledata

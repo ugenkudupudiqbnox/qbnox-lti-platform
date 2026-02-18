@@ -23,6 +23,9 @@ export PROTOCOL=${PROTOCOL:-http}
 export PB_ADMIN_USER=${PB_ADMIN_USER:-admin}
 export PB_ADMIN_PASSWORD=${PB_ADMIN_PASSWORD:-admin}
 export PB_ADMIN_EMAIL=${PB_ADMIN_EMAIL:-admin@example.com}
+export MOODLE_ADMIN_USER=${MOODLE_ADMIN_USER:-admin}
+export MOODLE_ADMIN_PASSWORD=${MOODLE_ADMIN_PASSWORD:-Moodle123!}
+export MOODLE_ADMIN_EMAIL=${MOODLE_ADMIN_EMAIL:-admin@example.com}
 
 # With Nginx proxy on host, we use standard port 80/443
 export MOODLE_URL="${PROTOCOL}://${MOODLE_DOMAIN}"
