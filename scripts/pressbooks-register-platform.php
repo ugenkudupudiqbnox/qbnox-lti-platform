@@ -31,8 +31,13 @@ $data = [
 ];
 
 if ($existing) {
-    echo "✓ Platform already exists, updating...\n";
+    echo "✓ Platform already exists, updating all fields...\n";
     $wpdb->update($table, $data, ['id' => $existing->id]);
+    if ($wpdb->last_error) {
+        echo "✗ Update failed: " . $wpdb->last_error . "\n";
+        exit(1);
+    }
+    echo "✓ Platform updated (ID: {$existing->id})\n";
 } else {
     $result = $wpdb->insert($table, $data);
     if ($result) {
@@ -43,20 +48,22 @@ if ($existing) {
     }
 }
 
-// Ensure deployment exists
+// Upsert deployment — update deployment_id in case it changed
 $dep_table = $wpdb->prefix . 'lti_deployments';
-$dep_exists = $wpdb->get_var($wpdb->prepare(
-    "SELECT id FROM $dep_table WHERE platform_issuer = %s AND deployment_id = %s",
-    $issuer,
-    $deployment_id
+$dep_existing = $wpdb->get_row($wpdb->prepare(
+    "SELECT id, deployment_id FROM $dep_table WHERE platform_issuer = %s",
+    $issuer
 ));
 
-if (!$dep_exists) {
+if (!$dep_existing) {
     $wpdb->insert($dep_table, [
         'platform_issuer' => $issuer,
-        'deployment_id' => $deployment_id
+        'deployment_id'   => $deployment_id
     ]);
     echo "✓ Deployment $deployment_id registered\n";
+} elseif ($dep_existing->deployment_id !== $deployment_id) {
+    $wpdb->update($dep_table, ['deployment_id' => $deployment_id], ['id' => $dep_existing->id]);
+    echo "✓ Deployment updated: {$dep_existing->deployment_id} → $deployment_id\n";
 } else {
-    echo "✓ Deployment $deployment_id already exists\n";
+    echo "✓ Deployment $deployment_id already current\n";
 }

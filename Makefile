@@ -28,8 +28,10 @@ seed-books:
 simulate-ags:
 	sudo docker cp scripts/create-ags-activity.php moodle:/tmp/
 	sudo docker cp scripts/simulate-ags-grade.php moodle:/tmp/
+	sudo docker cp scripts/create-deep-linking-activity.php moodle:/tmp/
 	sudo docker exec moodle php /tmp/create-ags-activity.php
 	sudo docker exec moodle php /tmp/simulate-ags-grade.php
+	bash -c 'source scripts/load-env.sh && sudo docker exec -e MOODLE_URL="$$MOODLE_URL" moodle php /tmp/create-deep-linking-activity.php'
 
 test:
 	bash scripts/lti-smoke-test.sh
