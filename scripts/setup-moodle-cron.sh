@@ -36,7 +36,7 @@ DOCKER_PATH=$(command -v docker)
 cat >> /tmp/current_cron << EOF
 
 # Moodle cron - runs every minute
-* * * * * ${DOCKER_CMD} ${DOCKER_PATH} exec moodle php /var/www/html/admin/cli/cron.php >> /tmp/moodle-cron.log 2>&1
+* * * * * sudo ${DOCKER_PATH} exec moodle php /var/www/html/admin/cli/cron.php >> /tmp/moodle-cron.log 2>&1
 EOF
 
 # Install the new crontab

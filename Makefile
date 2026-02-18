@@ -1,7 +1,7 @@
-.PHONY: up install-pressbooks install enable-lti seed seed-books install-h5p simulate-ags test-deep-linking test-ags credentials setup-nginx
+.PHONY: up install-pressbooks install enable-lti seed seed-books install-h5p simulate-ags setup-moodle-cron test-deep-linking test-ags credentials setup-nginx
 
 all:
-	make setup-nginx up install-pressbooks install enable-lti seed seed-books install-h5p simulate-ags test-deep-linking test-ags credentials
+	make setup-nginx up install-pressbooks install enable-lti seed seed-books install-h5p simulate-ags setup-moodle-cron test-deep-linking test-ags credentials
 
 setup-nginx:
 	sudo bash scripts/setup-nginx.sh
@@ -27,6 +27,11 @@ seed-books:
 
 install-h5p:
 	bash scripts/install-h5p-libraries.sh
+
+setup-moodle-cron:
+	$(eval DOCKER_PATH := $(shell command -v docker))
+	(crontab -l 2>/dev/null | grep -v "exec moodle php /var/www/html/admin/cli/cron.php"; echo "* * * * * sudo $(DOCKER_PATH) exec moodle php /var/www/html/admin/cli/cron.php >> /tmp/moodle-cron.log 2>&1") | crontab -
+	@echo "✅ Moodle cron scheduled (every minute)"
 
 simulate-ags:
 	sudo docker cp scripts/create-ags-activity.php moodle:/tmp/
