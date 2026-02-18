@@ -52,6 +52,8 @@ sudo -E $DC exec -T pressbooks chown -R www-data:www-data /var/www/pressbooks/we
 
 # H5P configuration - MUST BE ENABLED for all sites to support testing
 echo "🛠️ Configuring H5P upload options for $BOOK_URL"
+# Ensure H5P plugin is active on the network and this site
+sudo -E $DC exec -T pressbooks wp plugin activate h5p --url="$BOOK_URL" --allow-root
 sudo -E $DC exec -T pressbooks wp option update h5p_upload_libraries 1 --url="$BOOK_URL" --allow-root
 sudo -E $DC exec -T pressbooks wp option update h5p_hub_is_enabled 1 --url="$BOOK_URL" --allow-root
 sudo -E $DC exec -T pressbooks wp option update h5p_track_user 1 --url="$BOOK_URL" --allow-root
@@ -60,6 +62,8 @@ sudo -E $DC exec -T pressbooks wp option update h5p_track_user 1 --url="$BOOK_UR
 echo "📥 Syncing H5P libraries and importing artifacts..."
 # Copy all H5P files from artifacts to container
 sudo docker exec pressbooks mkdir -p /tmp/h5p_imports
+# Download a guaranteed valid H5P file to test with
+sudo docker exec pressbooks curl -L -o /tmp/h5p_imports/arithmetic-quiz-full.h5p https://h5p.org/sites/default/files/h5p/content/arithmetic-quiz-57850.h5p
 sudo docker cp artifacts/h5p/. pressbooks:/tmp/h5p_imports/
 sudo docker exec pressbooks chown -R www-data:www-data /tmp/h5p_imports
 

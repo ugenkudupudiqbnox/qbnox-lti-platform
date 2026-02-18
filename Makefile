@@ -47,6 +47,9 @@ collect-artifacts:
 	bash scripts/ci-collect-artifacts.sh
 
 clean:
-	@echo "🛑 Stopping containers and removing volumes..."
+	@echo "🛑 Stopping containers, removing volumes, and cleaning built images..."
 	bash lti-local-lab/reset.sh
 	@echo "✅ Cleaned up development environment"
+
+rebuild:
+	make clean all

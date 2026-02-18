@@ -9,9 +9,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 COMPOSE_FILE="$SCRIPT_DIR/docker-compose.yml"
 
 if command -v docker-compose >/dev/null 2>&1; then
-  $SUDO_DOCKER docker-compose -f "$COMPOSE_FILE" down -v --remove-orphans
+  $SUDO_DOCKER docker-compose -f "$COMPOSE_FILE" down -v --remove-orphans --rmi local
 else
-  $SUDO_DOCKER docker compose -f "$COMPOSE_FILE" down -v --remove-orphans
+  $SUDO_DOCKER docker compose -f "$COMPOSE_FILE" down -v --remove-orphans --rmi local
 fi
 
 # Clean up any CI artifacts or temporary test data on the host

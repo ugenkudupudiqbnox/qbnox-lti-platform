@@ -8,11 +8,9 @@ if (php_sapi_name() !== 'cli') {
     die("This script must be run from the command line.\n");
 }
 
-// Ensure error reporting is on for debugging
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-// Mock a logged-in administrator for permissions
 if (!defined('WP_ADMIN')) define('WP_ADMIN', true);
 global $current_user;
 $current_user = get_user_by('login', 'admin');
@@ -25,27 +23,28 @@ if ($current_user) {
     $current_user = get_user_by('id', 1);
 }
 
-// 1. Set H5P options: auto-consent to Hub and enable libraries
+echo "Getting H5P Plugin instances...\n";
+$h5p_plugin = \H5P_Plugin::get_instance();
+$interface = $h5p_plugin->get_h5p_instance('interface');
+$core = $h5p_plugin->get_h5p_instance('core');
+$storage = $h5p_plugin->get_h5p_instance('storage');
+$validator = $h5p_plugin->get_h5p_instance('validator');
+
+// 1. Set options
 echo "Checking H5P options...\n";
 update_option('h5p_hub_is_enabled', '1');
 update_option('h5p_send_usage_statistics', '0');
 update_option('h5p_track_user', '0');
-update_option('h5p_save_content_state', '0');
 update_option('h5p_export', '1');
 update_option('h5p_embed', '1');
 update_option('h5p_copyright', '1');
 update_option('h5p_icon', '1');
 echo "✅ H5P options updated.\n";
 
-// 2. Refresh H5P Content Type Cache from Hub
+// 2. Hub sync
 echo "Syncing H5P Content Type Cache from Hub...\n";
-$interface = \H5P_Plugin::get_instance()->get_interface();
-$core = \H5P_Plugin::get_instance()->get_core();
-$storage = \H5P_Plugin::get_instance()->get_storage();
-$validator = \H5P_Plugin::get_instance()->get_validator();
-
-if ("DESC pressbooks.wp_2_h5p_contents;"core->updateContentTypeCache()) {
-   echo "⚠️ Hub sync returned false. This may happen if the cache is already up-to-date or Hub is unreachable.\n";
+if ('832,860p'core->updateContentTypeCache()) {
+   echo "⚠️ Hub sync returned false.\n";
 } else {
    echo "✅ H5P Hub sync complete.\n";
 }
@@ -60,7 +59,7 @@ foreach ($libraries as $lib_name => $versions) {
     }
 }
 
-if ("DESC pressbooks.wp_2_h5p_contents;"has_arithmetic_quiz) {
+if ('832,860p'has_arithmetic_quiz) {
     echo "Installing H5P.ArithmeticQuiz from Hub...\n";
     try {
         if (class_exists('H5PEditorAjax')) {
@@ -77,7 +76,7 @@ if ("DESC pressbooks.wp_2_h5p_contents;"has_arithmetic_quiz) {
     echo "✅ H5P.ArithmeticQuiz is already installed.\n";
 }
 
-// 4. Import artifacts from /tmp/h5p_imports/
+// 4. Import artifacts
 $import_dir = '/tmp/h5p_imports';
 if (is_dir($import_dir)) {
     $files = glob($import_dir . '/*.h5p');
@@ -99,28 +98,21 @@ if (is_dir($import_dir)) {
                 $main_json = $core->mainJsonData;
                 $title = !empty($main_json['title']) ? $main_json['title'] : str_replace('.h5p', '', $filename);
                 
-                // Content data structure for H5P Storage
                 $content_data = array(
                     'title' => $title,
-                    'metadata' => array(
-                        'title' => $title
-                    ),
+                    'metadata' => (object) array('title' => $title),
                     'params' => '{}',
                     'uploaded' => true,
                     'disable' => 0
                 );
 
-                // Zip extraction
                 $zip = new ZipArchive();
                 if ($zip->open($official_tmp_path) === TRUE) {
                     $c_json = $zip->getFromName('content/content.json');
-                    if ($c_json) {
-                        $content_data['params'] = $c_json;
-                    }
+                    if ($c_json) $content_data['params'] = $c_json;
                     $zip->close();
                 }
 
-                // Call savePackage
                 $id = $storage->savePackage($content_data, NULL, $isFull);
                 
                 if ($id) {
@@ -128,12 +120,8 @@ if (is_dir($import_dir)) {
                 } else {
                     global $wpdb;
                     echo "     ❌ Save FAILED. DB Error: " . $wpdb->last_error . "\n";
-                    // If DB error is empty, check validation messages
-                    $v_errors = $validator->getMessages('error');
-                    if ($v_errors) {
-                        echo "     Validation errors during save:\n";
-                        print_r($v_errors);
-                    }
+                    $v_errs = $validator->getMessages('error');
+                    if ($v_errs) print_r($v_errs);
                 }
             } else {
                 echo "     ❌ Validation FAILED.\n";
