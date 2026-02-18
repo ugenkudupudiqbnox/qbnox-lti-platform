@@ -118,6 +118,13 @@ server {
         proxy_set_header X-Forwarded-Proto \$scheme;
         proxy_set_header X-Forwarded-Host \$host;
 
+        # Rewrite any http:// Location headers from the backend to https://
+        proxy_redirect http:// https://;
+
+        # Use HTTP/1.1 so the backend connection can be kept alive
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+
         # Increase timeouts for long-running Moodle tasks
         proxy_read_timeout 300;
         proxy_connect_timeout 300;
@@ -150,10 +157,17 @@ server {
         proxy_set_header X-Forwarded-Proto \$scheme;
         proxy_set_header X-Forwarded-Host \$host;
 
-        # Max upload size for Pressbooks imports
-        client_max_body_size 128M;
+        # Rewrite any http:// Location headers from the backend to https://
+        proxy_redirect http:// https://;
 
-        # Increase timeouts
+        # Use HTTP/1.1 so the backend connection can be kept alive
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+
+        # Max upload size for Pressbooks/H5P imports (matches PHP upload limit)
+        client_max_body_size 512M;
+
+        # Increase timeouts for long-running Pressbooks/H5P tasks
         proxy_read_timeout 300;
         proxy_connect_timeout 300;
         proxy_send_timeout 300;
@@ -309,6 +323,13 @@ server {
         proxy_set_header X-Forwarded-Proto \$scheme;
         proxy_set_header X-Forwarded-Host \$host;
 
+        # Rewrite any http:// Location headers from the backend to https://
+        proxy_redirect http:// https://;
+
+        # Use HTTP/1.1 so the backend connection can be kept alive
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+
         # Increase timeouts for long-running Moodle tasks
         proxy_read_timeout 300;
         proxy_connect_timeout 300;
@@ -347,10 +368,17 @@ server {
         proxy_set_header X-Forwarded-Proto \$scheme;
         proxy_set_header X-Forwarded-Host \$host;
 
-        # Max upload size for Pressbooks imports
-        client_max_body_size 128M;
+        # Rewrite any http:// Location headers from the backend to https://
+        proxy_redirect http:// https://;
 
-        # Increase timeouts
+        # Use HTTP/1.1 so the backend connection can be kept alive
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+
+        # Max upload size for Pressbooks/H5P imports (matches PHP upload limit)
+        client_max_body_size 512M;
+
+        # Increase timeouts for long-running Pressbooks/H5P tasks
         proxy_read_timeout 300;
         proxy_connect_timeout 300;
         proxy_send_timeout 300;

@@ -4,6 +4,12 @@ set -e
 APP_ROOT="/var/www/pressbooks"
 WP_PATH="${APP_ROOT}/web/wp"
 
+# Determine protocol from WP_HOME early - used throughout this script.
+# Must be set here (top level) so it is always available, not just inside the
+# domain-change branch where it was previously computed.
+PROTO="https"
+if [[ "${WP_HOME:-}" == http://* ]]; then PROTO="http"; fi
+
 # Wait for DB
 until mysqladmin ping -h"$DB_HOST" --skip-ssl --silent 2>/dev/null; do
   echo "Waiting for MySQL..."
@@ -117,10 +123,6 @@ if mysql -h"$DB_HOST" -u"$DB_USER" -p"$DB_PASSWORD" --ssl-mode=DISABLED "$DB_NAM
   if [ -n "$OLD_DCS" ] && [ "$CURRENT_DB_DOMAIN" != "$OLD_DCS" ]; then
     echo "🌍 Domain change detected ($CURRENT_DB_DOMAIN -> $OLD_DCS). Updating database..."
     
-    # Extract protocol from WP_HOME or default to https
-    PROTO="https"
-    if [[ "$WP_HOME" == http://* ]]; then PROTO="http"; fi
-    
     if [ "$PROTO" = "https" ]; then
       mysql -h"$DB_HOST" -u"$DB_USER" -p"$DB_PASSWORD" --ssl-mode=DISABLED "$DB_NAME" -e "UPDATE wp_site SET domain='$OLD_DCS', path='/' WHERE id=1;"
       mysql -h"$DB_HOST" -u"$DB_USER" -p"$DB_PASSWORD" --ssl-mode=DISABLED "$DB_NAME" -e "UPDATE wp_blogs SET domain='$OLD_DCS', path='/' WHERE blog_id=1;"
@@ -231,5 +233,51 @@ chmod -R 775 web/app/uploads
 echo "Creating installation marker..."
 touch /var/www/pressbooks/.installation_complete
 ls -la /var/www/pressbooks/.installation_complete
+
+# -----------------------------------------------------------------------
+# SSL Reverse-Proxy Fix (mu-plugin)
+#
+# This mu-plugin is written every startup so it always reflects the current
+# PROTO setting.  WordPress loads mu-plugins at wp-settings.php line ~454,
+# BEFORE wp_ssl_constants() runs at line ~506.  That ordering lets us:
+#   1. Pre-define FORCE_SSL_ADMIN=false so WordPress never fires its own
+#      HTTP→HTTPS admin redirect (Nginx already does that; WP doing it
+#      too creates the infinite reauth=1 loop because Apache sees HTTP
+#      internally regardless of what the browser sees).
+#   2. Set $_SERVER['HTTPS']='on' from X-Forwarded-Proto so is_ssl()
+#      returns true, ensuring auth cookies get the Secure flag and the
+#      correct SECURE_AUTH_COOKIE name is used end-to-end.
+# -----------------------------------------------------------------------
+mkdir -p "$APP_ROOT/web/app/mu-plugins"
+cat > "$APP_ROOT/web/app/mu-plugins/00-ssl-proxy-fix.php" <<'PHPEOF'
+<?php
+/**
+ * SSL Reverse-Proxy Fix
+ *
+ * Loaded by WordPress BEFORE wp_ssl_constants() (wp-settings.php ~line 506).
+ * Required when Apache runs on plain HTTP behind an Nginx SSL reverse proxy.
+ */
+
+// 1. Detect HTTPS from the reverse proxy header so is_ssl() works correctly.
+if ( ( ! isset( $_SERVER['HTTPS'] ) || $_SERVER['HTTPS'] !== 'on' ) &&
+     isset( $_SERVER['HTTP_X_FORWARDED_PROTO'] ) &&
+     $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https' ) {
+    $_SERVER['HTTPS']       = 'on';
+    $_SERVER['SERVER_PORT'] = '443';
+}
+
+// 2. Prevent WordPress from enforcing SSL via its own redirect.
+//    Nginx already terminates SSL and redirects HTTP→HTTPS before traffic
+//    reaches this container.  If FORCE_SSL_ADMIN is true AND is_ssl()
+//    returns false (e.g. when Nginx doesn't forward X-Forwarded-Proto),
+//    WordPress redirects /wp-admin → https://.../wp-admin but Apache
+//    still sees HTTP so is_ssl() stays false → infinite redirect loop
+//    with reauth=1.  Setting it false here breaks that cycle.
+if ( ! defined( 'FORCE_SSL_ADMIN' ) ) {
+    define( 'FORCE_SSL_ADMIN', false );
+}
+PHPEOF
+chown www-data:www-data "$APP_ROOT/web/app/mu-plugins/00-ssl-proxy-fix.php"
+echo "✅ SSL proxy mu-plugin written to web/app/mu-plugins/00-ssl-proxy-fix.php"
 
 exec "$@"

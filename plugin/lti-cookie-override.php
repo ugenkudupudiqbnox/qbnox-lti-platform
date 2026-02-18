@@ -46,7 +46,7 @@ if (!function_exists('wp_set_auth_cookie')) {
         }
 
         $secure = apply_filters( 'secure_auth_cookie', $secure, $user_id );
-        $secure_logged_in_cookie = apply_filters( 'secure_logged_in_cookie', false, $user_id, $secure );
+        $secure_logged_in_cookie = apply_filters( 'secure_logged_in_cookie', ( $secure && is_ssl() ), $user_id, $secure );
         $auth_cookie = wp_generate_auth_cookie( $user_id, $expiration, 'auth', $token );
         $logged_in_cookie = wp_generate_auth_cookie( $user_id, $expiration, 'logged_in', $token );
 

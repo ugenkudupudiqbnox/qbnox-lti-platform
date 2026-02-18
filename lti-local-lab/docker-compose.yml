@@ -81,7 +81,7 @@ services:
       DB_PASSWORD: root
       DB_HOST: mysql
       WP_HOME: ${PRESSBOOKS_URL:-http://localhost:8081}
-      DOMAIN_CURRENT_SITE: ${PRESSBOOKS_INTERNAL_DOMAIN:-localhost}
+      DOMAIN_CURRENT_SITE: ${PRESSBOOKS_DOMAIN:-pressbooks.local}
       WP_ADMIN_USER: ${PB_ADMIN_USER:-admin}
       WP_ADMIN_PASSWORD: ${PB_ADMIN_PASSWORD:-admin}
       WP_ADMIN_EMAIL: ${PB_ADMIN_EMAIL:-admin@example.com}
@@ -97,6 +97,8 @@ services:
       - pressbooks-data:/var/www/pressbooks
       # Plugin volume mount for hot-reload during development
       - ../plugin:/var/www/pressbooks/web/app/plugins/pressbooks-lti-platform
+      # Apache config: sets correct DocumentRoot and trusts X-Forwarded-Proto from Nginx SSL proxy
+      - ./apache-config/000-default.conf:/etc/apache2/sites-available/000-default.conf:ro
     ports:
       - "8081:80"
     extra_hosts:
@@ -105,7 +107,7 @@ services:
     networks:
       - lti-net
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost/"]
+      test: ["CMD", "curl", "-f", "-H", "Host: ${PRESSBOOKS_DOMAIN:-pressbooks.local}", "http://localhost/wp/wp-login.php"]
       interval: 10s
       timeout: 5s
       retries: 20
