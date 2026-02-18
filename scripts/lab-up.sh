@@ -154,7 +154,7 @@ done
 # 6. Configure Local Nginx Proxy
 if [[ "$MOODLE_DOMAIN" == "moodle.local" && "$PRESSBOOKS_DOMAIN" == "pressbooks.local" ]]; then
     echo "🌐 Setting up local Nginx proxy..."
-    sudo "$(dirname "$0")/setup-local-nginx.sh"
+    sudo "$(dirname "$0")/setup-nginx.sh"
 fi
 
 # === Setup Lab ===

@@ -4,7 +4,7 @@ all:
 	make setup-nginx up install-pressbooks install enable-lti seed seed-books simulate-ags test-deep-linking test-ags credentials
 
 setup-nginx:
-	sudo bash scripts/setup-local-nginx.sh
+	sudo bash scripts/setup-nginx.sh
 
 up:
 	bash scripts/lab-up.sh
