@@ -8,7 +8,8 @@ class RoleMapper {
 
         foreach ($roles as $role) {
             if (str_contains($role, 'Instructor') || str_contains($role, 'Administrator')) {
-                $wp_role = 'editor';
+                // We use 'administrator' for instructors in their own book to ensure full control over H5P content & libraries
+                $wp_role = 'administrator';
                 break;
             }
         }

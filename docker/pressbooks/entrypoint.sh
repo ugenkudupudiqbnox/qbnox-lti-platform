@@ -180,6 +180,16 @@ EOF
   chown www-data:www-data web/.htaccess
 fi
 
+# Ensure uploads directory and Pressbooks specific subdirs exist and are writable
+echo "🔧 Setting up Pressbooks uploads and cache directories..."
+mkdir -p web/app/uploads/pressbooks/cache
+mkdir -p web/app/uploads/sites
+mkdir -p web/app/cache
+chown -R www-data:www-data web/app/uploads
+chown -R www-data:www-data web/app/cache
+chmod -R 775 web/app/uploads
+chmod -R 775 web/app/cache
+
 # Install LTI plugin Composer dependencies
 LTI_PLUGIN_PATH="${APP_ROOT}/web/app/plugins/pressbooks-lti-platform"
 if [ -d "$LTI_PLUGIN_PATH" ] && [ -f "$LTI_PLUGIN_PATH/composer.json" ]; then
@@ -191,6 +201,11 @@ if [ -d "$LTI_PLUGIN_PATH" ] && [ -f "$LTI_PLUGIN_PATH/composer.json" ]; then
     echo "✓ LTI plugin dependencies installed"
   fi
 fi
+
+# Final ownership check on app directory for web server access (fixing blank pages/cloning issues)
+echo "🔧 Fixing ownership and permissions for web/app..."
+chown -R www-data:www-data web/app
+chmod -R 775 web/app/uploads
 
 echo "Creating installation marker..."
 touch /var/www/pressbooks/.installation_complete

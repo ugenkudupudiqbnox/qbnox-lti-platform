@@ -14,7 +14,7 @@ echo "Using Client ID: $CLIENT_ID"
 # Then Step 2: Post selection to get JWT
 # Use HTTP directly to port 8081 to bypass nginx HTTPS issues in local dev
 RESPONSE=$(curl -s -X POST \
-  -H "Host: pb.lti.qbnox.com" \
+  -H "Host: ${PRESSBOOKS_INTERNAL_DOMAIN}" \
   "http://127.0.0.1:8081/wp-json/pb-lti/v1/deep-link" \
   -d "deep_link_return_url=https://example.com/return" \
   -d "client_id=$CLIENT_ID" \
