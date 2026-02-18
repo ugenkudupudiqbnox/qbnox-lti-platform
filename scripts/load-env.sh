@@ -33,9 +33,6 @@ export PRESSBOOKS_URL="${PROTOCOL}://${PRESSBOOKS_DOMAIN}"
 export MOODLE_INTERNAL_DOMAIN="${MOODLE_DOMAIN}"
 export PRESSBOOKS_INTERNAL_DOMAIN="${PRESSBOOKS_DOMAIN}"
 
-echo $MOODLE_URL
-echo $PRESSBOOKS_URL
-
 # Check if sudo is needed for Docker
 if command -v docker &> /dev/null && ! docker ps &> /dev/null; then
     export SUDO_DOCKER="sudo -E"

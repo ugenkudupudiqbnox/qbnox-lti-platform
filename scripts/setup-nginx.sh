@@ -373,8 +373,8 @@ EOF
         echo ""
         echo "🔧 Updating Moodle configuration for HTTPS..."
         docker exec moodle sed -i "s|http://${MOODLE_DOMAIN}|https://${MOODLE_DOMAIN}|g" /var/www/html/config.php 2>/dev/null || true
-        docker exec moodle sed -i "/\\\$CFG->directorypermissions/a \\\$CFG->sslproxy = true;" /var/www/html/config.php 2>/dev/null || true
         echo "✅ Moodle configured for HTTPS"
+        echo "ℹ️  sslproxy is set automatically by lab-up.sh after container startup"
     fi
 
     if [ "$PRESSBOOKS_RUNNING" = true ]; then
@@ -388,11 +388,6 @@ EOF
 fi
 
 # Final summary
-echo ""
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "✅ Setup Complete!"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
 
 # Set protocol based on HTTPS status
 if [ "$USE_HTTPS" = true ]; then
@@ -415,14 +410,3 @@ elif [ "$IS_LOCAL" = false ]; then
     echo "   To enable HTTPS, run: sudo bash scripts/setup-nginx.sh"
     echo ""
 fi
-
-if [ "$IS_LOCAL" = true ]; then
-    echo "💻 Local development mode"
-    echo "   Start services with: make up"
-else
-    echo "📋 Production mode - Next steps:"
-    echo "   1. Test Moodle: ${PROTOCOL}://${MOODLE_DOMAIN}"
-    echo "   2. Test Pressbooks: ${PROTOCOL}://${PRESSBOOKS_DOMAIN}"
-    echo "   3. Run LTI integration tests: make test"
-fi
-echo ""
