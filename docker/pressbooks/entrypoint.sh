@@ -53,6 +53,14 @@ update_env_var DB_USER "$DB_USER"
 update_env_var DB_PASSWORD "$DB_PASSWORD"
 update_env_var DB_HOST "$DB_HOST"
 
+# Write WordPress security keys/salts to .env (required by Bedrock/phpdotenv for consistent cross-request cookie validation)
+for key in AUTH_KEY SECURE_AUTH_KEY LOGGED_IN_KEY NONCE_KEY AUTH_SALT SECURE_AUTH_SALT LOGGED_IN_SALT NONCE_SALT; do
+  val=$(printenv "$key" 2>/dev/null || true)
+  if [ -n "$val" ]; then
+    update_env_var "$key" "$val"
+  fi
+done
+
 # Strip trailing slashes from domain variables
 WP_HOME=${WP_HOME%/}
 DOMAIN_CURRENT_SITE=${DOMAIN_CURRENT_SITE%/}
@@ -115,9 +123,11 @@ if mysql -h"$DB_HOST" -u"$DB_USER" -p"$DB_PASSWORD" --ssl-mode=DISABLED "$DB_NAM
     
     mysql -h"$DB_HOST" -u"$DB_USER" -p"$DB_PASSWORD" --ssl-mode=DISABLED "$DB_NAME" -e "UPDATE wp_site SET domain='$OLD_DCS' WHERE id=1;"
     mysql -h"$DB_HOST" -u"$DB_USER" -p"$DB_PASSWORD" --ssl-mode=DISABLED "$DB_NAME" -e "UPDATE wp_blogs SET domain='$OLD_DCS' WHERE blog_id=1;"
-    mysql -h"$DB_HOST" -u"$DB_USER" -p"$DB_PASSWORD" --ssl-mode=DISABLED "$DB_NAME" -e "UPDATE wp_options SET option_value='$WP_HOME' WHERE option_name IN ('siteurl', 'home');"
-    # For Bedrock /subdirectory installs
-    mysql -h"$DB_HOST" -u"$DB_USER" -p"$DB_PASSWORD" --ssl-mode=DISABLED "$DB_NAME" -e "UPDATE wp_sitemeta SET meta_value='$WP_HOME' WHERE meta_key='siteurl';"
+    # In Bedrock, 'home' = WP_HOME (public URL) and 'siteurl' = WP_HOME/wp (core subdirectory)
+    mysql -h"$DB_HOST" -u"$DB_USER" -p"$DB_PASSWORD" --ssl-mode=DISABLED "$DB_NAME" -e "UPDATE wp_options SET option_value='$WP_HOME' WHERE option_name='home';"
+    mysql -h"$DB_HOST" -u"$DB_USER" -p"$DB_PASSWORD" --ssl-mode=DISABLED "$DB_NAME" -e "UPDATE wp_options SET option_value='${WP_HOME}/wp' WHERE option_name='siteurl';"
+    # For Bedrock /subdirectory installs — wp_sitemeta.siteurl must also be WP_HOME/wp
+    mysql -h"$DB_HOST" -u"$DB_USER" -p"$DB_PASSWORD" --ssl-mode=DISABLED "$DB_NAME" -e "UPDATE wp_sitemeta SET meta_value='${WP_HOME}/wp' WHERE meta_key='siteurl';"
     # Clear caches that might hold the old domain
     echo "🧹 Wiping cached object data..."
     mysql -h"$DB_HOST" -u"$DB_USER" -p"$DB_PASSWORD" --ssl-mode=DISABLED "$DB_NAME" -e "DELETE FROM wp_options WHERE option_name LIKE '_transient_%';"
