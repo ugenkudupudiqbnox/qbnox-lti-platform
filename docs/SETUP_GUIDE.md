@@ -268,6 +268,8 @@ Grade processing and LTI service tasks require Moodle's cron to run every minute
 
 ## Part 2 — Instructor Configuration
 
+> For a printable one-page reference covering all instructor tasks, see [docs/INSTRUCTOR_QUICK_REFERENCE.md](INSTRUCTOR_QUICK_REFERENCE.md).
+
 ### Adding Chapters via Deep Linking
 
 **Always use Deep Linking** when adding chapters that require grade sync. Deep Linking is what tells Moodle to create a grade column — manually entering a URL will not create one.
