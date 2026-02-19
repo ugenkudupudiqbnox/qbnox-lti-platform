@@ -96,6 +96,26 @@ The REST API runs in the **main site context** (blog 1). Book chapters live in *
 
 Security regressions block merges. For vulnerabilities, follow `SECURITY.md` (never open public issues).
 
+## Architecture Patterns & Key Decisions (2026 Updates)
+
+### Multisite LTI Infrastructure Hubbing
+To support horizontal scaling across a Pressbooks network, core LTI 1.3 security and identity tables (Platforms, Nonces, RSA Keys) must use `$wpdb->base_prefix`. This allows a single Tool registration in an LMS (e.g., Moodle) to serve all books in the WordPress network without redundant configurations. Book-specific data (Grading Config, Sync Logs) remains in the per-blog tables (`$wpdb->prefix`).
+
+### Dashboard Interception (The "Hijack" Pattern)
+The **Pressbooks Results Viewer** uses a specialized interception pattern:
+- **Hook**: `add_action('wp', [ResultsController, 'handle_frontend_launch'], 0)`
+- **Trigger**: URL parameter `?pb_lti_results_viewer=1`.
+- **Purpose**: Serves a clean, CSS-isolated React-like dashboard (using jQuery/AJAX) directly to the instructor's browser.
+- **Benefit**: Bypasses the WordPress theme engine entirely to ensure a consistent, "app-like" experience inside an LMS iFrame.
+
+### Sync Auditing vs. Native H5P Results
+Native WordPress H5P results are **ephemeral** (overwritten on every new attempt). Our architecture establishes `lti_h5p_grade_sync_log` as the **Immutable Source of Truth** for student attempts.
+- **Pattern**: Every H5P completion triggers a log entry with `score_sent`, `max_score`, `status` (success/failed), and `error_message`.
+- **UI**: The Results Viewer pulls student history from these sync logs, not from the raw H5P tables, providing a permanent audit trail for instructors.
+
+### Context-Aware Navigation
+The Results Viewer implements a "Drill-down" header pattern. The **Select Activity** dropdown is programmatically hidden in the main student list but is injected and displayed globally at the top of the page when the **Student Details** view is active. This preserves vertical space while allowing rapid filtering of attempts.
+
 ## Testing Strategy
 
 - **Smoke tests**: `scripts/lti-smoke-test.sh`
