@@ -144,14 +144,23 @@ class H5PGradeSyncEnhanced {
 
             if ($result['success']) {
                 error_log('[PB-LTI H5P Enhanced] ✅ Chapter grade posted successfully to LMS');
-
-                // Store sync timestamp
-                self::update_sync_timestamp($user_id, $post_id, $result_id);
             } else {
                 error_log('[PB-LTI H5P Enhanced] ❌ Failed to post grade: ' . ($result['error'] ?? 'Unknown error'));
             }
+
+            // Store sync status and scores in log
+            self::update_sync_timestamp(
+                $user_id, 
+                $post_id, 
+                $result_id, 
+                $final_score, 
+                $final_max, 
+                $result['success'] ? 'success' : 'failed',
+                $result['success'] ? null : ($result['error'] ?? 'Unknown error')
+            );
         } catch (\Exception $e) {
             error_log('[PB-LTI H5P Enhanced] ❌ Failed to post grade: ' . $e->getMessage());
+            self::update_sync_timestamp($user_id, $post_id, $result_id, $final_score, $final_max, 'failed', $e->getMessage());
         }
     }
 
@@ -194,7 +203,7 @@ class H5PGradeSyncEnhanced {
             }
         }
 
-        AGSClient::post_score(
+        $result = AGSClient::post_score(
             $platform,
             $lineitem_url,
             $lti_user_id,
@@ -203,6 +212,25 @@ class H5PGradeSyncEnhanced {
             'Completed',
             'FullyGraded'
         );
+
+        $post_id = self::find_chapter_containing_h5p($data['content_id']);
+        if ($post_id) {
+            self::update_sync_timestamp(
+                $user_id, 
+                $post_id, 
+                0, 
+                $final_score, 
+                $final_max,
+                $result['success'] ? 'success' : 'failed',
+                $result['success'] ? null : ($result['error'] ?? 'Unknown error')
+            );
+        }
+
+        if ($result['success']) {
+            error_log('[PB-LTI H5P Enhanced] Individual grade sync successful');
+        } else {
+            error_log('[PB-LTI H5P Enhanced] Individual grade sync failed: ' . ($result['error'] ?? 'Unknown error'));
+        }
     }
 
     /**
@@ -241,8 +269,12 @@ class H5PGradeSyncEnhanced {
      * @param int $user_id WordPress user ID
      * @param int $post_id Chapter post ID
      * @param int $result_id H5P result ID
+     * @param float $score Score sent
+     * @param float $max_score Maximum score
+     * @param string $status Sync status (success, failed)
+     * @param string $error Error message if failed
      */
-    private static function update_sync_timestamp($user_id, $post_id, $result_id) {
+    private static function update_sync_timestamp($user_id, $post_id, $result_id, $score = null, $max_score = null, $status = 'success', $error = null) {
         global $wpdb;
 
         $table = $wpdb->prefix . 'lti_h5p_grade_sync_log';
@@ -251,7 +283,11 @@ class H5PGradeSyncEnhanced {
             'user_id' => $user_id,
             'post_id' => $post_id,
             'result_id' => $result_id,
-            'synced_at' => current_time('mysql')
+            'score_sent' => $score,
+            'max_score' => $max_score,
+            'synced_at' => current_time('mysql'),
+            'status' => $status,
+            'error_message' => $error
         ]);
     }
 
@@ -426,16 +462,26 @@ class H5PGradeSyncEnhanced {
                         $chapter_score['percentage']
                     ));
 
-                    // Log sync
-                    self::update_sync_timestamp($wp_user_id, $post_id, 0);
+                    // Log sync status and scores
+                    self::update_sync_timestamp(
+                        $wp_user_id, 
+                        $post_id, 
+                        0, 
+                        $final_score, 
+                        $final_max,
+                        $result['success'] ? 'success' : 'failed',
+                        $result['success'] ? null : ($result['error'] ?? 'Unknown error')
+                    );
                     $results['success']++;
                 } else {
                     error_log('[PB-LTI H5P Sync] ❌ Failed for user ' . $wp_user_id . ': ' . ($result['error'] ?? 'Unknown error'));
+                    self::update_sync_timestamp($wp_user_id, $post_id, 0, $final_score, $final_max, 'failed', $result['error'] ?? 'Unknown error');
                     $results['failed']++;
                     $results['errors'][] = 'User ' . $wp_user_id . ': ' . ($result['error'] ?? 'Unknown error');
                 }
             } catch (\Exception $e) {
                 error_log('[PB-LTI H5P Sync] ❌ Exception for user ' . $wp_user_id . ': ' . $e->getMessage());
+                self::update_sync_timestamp($wp_user_id, $post_id, 0, $final_score, $final_max, 'failed', $e->getMessage());
                 $results['failed']++;
                 $results['errors'][] = 'User ' . $wp_user_id . ': ' . $e->getMessage();
             }

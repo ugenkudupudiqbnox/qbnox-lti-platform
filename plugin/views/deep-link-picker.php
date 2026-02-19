@@ -243,6 +243,48 @@ $deployment_id = $data['deployment_id'] ?? '';
             margin-bottom: 16px;
         }
 
+        /* Tabs Navigation */
+        .tabs {
+            display: flex;
+            border-bottom: 2px solid #e2e8f0;
+            margin: 0 -30px 25px;
+            padding: 0 30px;
+        }
+
+        .tab-btn {
+            padding: 15px 25px;
+            cursor: pointer;
+            border: none;
+            background: none;
+            font-size: 15px;
+            font-weight: 600;
+            color: #64748b;
+            border-bottom: 3px solid transparent;
+            margin-bottom: -2px;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .tab-btn:hover {
+            color: #2271b1;
+            background: #f8fafc;
+        }
+
+        .tab-btn.active {
+            color: #2271b1;
+            border-bottom-color: #2271b1;
+        }
+
+        .tab-panel {
+            display: none;
+        }
+
+        .tab-panel.active {
+            display: block;
+        }
+
         .selection-info {
             background: #f0f9ff;
             border: 1px solid #bae6fd;
@@ -409,41 +451,74 @@ $deployment_id = $data['deployment_id'] ?? '';
         </div>
 
         <div class="content">
-            <div id="selection-info" class="selection-info">
-                <strong>Selected:</strong> <span id="selected-title">None</span>
+            <div class="tabs">
+                <button class="tab-btn active" onclick="switchTab('content-picker')">📖 Content Picker</button>
+                <button class="tab-btn" onclick="switchTab('results-viewer-picker')">📊 Results Viewers</button>
             </div>
 
-            <?php if (empty($books)): ?>
-                <div class="empty-state">
-                    <div class="empty-state-icon">📖</div>
-                    <h2>No Books Found</h2>
-                    <p>There are no published books in this Pressbooks network yet.</p>
+            <!-- Tab: Content Picker -->
+            <div id="content-picker" class="tab-panel active">
+                <div id="selection-info-content" class="selection-info" style="margin-bottom: 20px; display: none;">
+                    <strong>Selected:</strong> <span id="selected-title-content">None</span>
                 </div>
-            <?php else: ?>
-                <div class="book-list" id="book-list">
-                    <?php foreach ($books as $book): ?>
-                        <div class="book-card" data-book-id="<?php echo esc_attr($book['id']); ?>" data-book-title="<?php echo esc_attr($book['title']); ?>" data-book-url="<?php echo esc_attr($book['url']); ?>">
-                            <div class="book-title"><?php echo esc_html($book['title']); ?></div>
-                            <?php if (!empty($book['description'])): ?>
-                                <div class="book-description"><?php echo esc_html($book['description']); ?></div>
-                            <?php endif; ?>
-                            <div class="book-url"><?php echo esc_html($book['url']); ?></div>
-                            <button class="expand-btn" onclick="loadChapters(<?php echo esc_attr($book['id']); ?>, event)">
-                                View Chapters
-                            </button>
-                            <div class="chapter-list" id="chapters-<?php echo esc_attr($book['id']); ?>">
-                                <div class="loading">Loading chapters...</div>
+
+                <?php if (empty($books)): ?>
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📖</div>
+                        <h2>No Books Found</h2>
+                        <p>There are no published books in this Pressbooks network yet.</p>
+                    </div>
+                <?php else: ?>
+                    <div class="book-list" id="book-list-content">
+                        <?php foreach ($books as $book): ?>
+                            <div class="book-card" data-book-id="<?php echo esc_attr($book['id']); ?>" data-book-title="<?php echo esc_attr($book['title']); ?>">
+                                <div class="book-title"><?php echo esc_html($book['title']); ?></div>
+                                <?php if (!empty($book['description'])): ?>
+                                    <div class="book-description"><?php echo esc_html($book['description']); ?></div>
+                                <?php endif; ?>
+                                <div class="book-url"><?php echo esc_html($book['url']); ?></div>
+                                <div style="margin-top: 15px;">
+                                    <button class="expand-btn" onclick="loadChapters(<?php echo esc_attr($book['id']); ?>, event)">
+                                        📚 View Chapters
+                                    </button>
+                                </div>
+                                <div class="chapter-list" id="chapters-<?php echo esc_attr($book['id']); ?>">
+                                    <div class="loading">Loading chapters...</div>
+                                </div>
                             </div>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
+
+                <div class="actions">
+                    <button class="btn btn-secondary" onclick="window.history.back()">Cancel</button>
+                    <button class="btn btn-primary" id="submit-btn" onclick="submitSelection()" disabled>
+                        Select This Content
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tab: Results Viewer Picker -->
+            <div id="results-viewer-picker" class="tab-panel">
+                <p style="margin-bottom: 20px; color: #64748b; font-size: 14px;">Select a book below to add a <strong>Results Viewer</strong> for that book to your course. Instructors can use this to track student progress and H5P scores.</p>
+                
+                <div class="book-list" id="book-list-results">
+                    <?php foreach ($books as $book): ?>
+                        <div class="book-card" style="display: flex; justify-content: space-between; align-items: center;" onclick="submitResultsViewer(<?php echo esc_attr($book['id']); ?>, '<?php echo esc_attr($book['title']); ?>', event)">
+                            <div>
+                                <div class="book-title" style="margin-bottom: 0;"><?php echo esc_html($book['title']); ?></div>
+                                <div class="book-url"><?php echo esc_html($book['url']); ?></div>
+                            </div>
+                            <button class="btn btn-primary" style="background: #166534;">
+                                Add Viewer
+                            </button>
                         </div>
                     <?php endforeach; ?>
                 </div>
-            <?php endif; ?>
-
-            <div class="actions">
-                <button class="btn btn-secondary" onclick="window.history.back()">Cancel</button>
-                <button class="btn btn-primary" id="submit-btn" onclick="submitSelection()" disabled>
-                    Select This Content
-                </button>
+                
+                <div class="actions">
+                    <button class="btn btn-secondary" onclick="window.history.back()">Cancel</button>
+                </div>
             </div>
         </div>
     </div>
@@ -481,14 +556,31 @@ $deployment_id = $data['deployment_id'] ?? '';
         <input type="hidden" name="selected_title" id="form_selected_title">
         <input type="hidden" name="selected_url" id="form_selected_url">
         <input type="hidden" name="selected_chapter_ids" id="selected_chapter_ids">
+        <input type="hidden" name="is_results_viewer" id="is_results_viewer" value="0">
     </form>
 
     <script>
         let selectedBook = null;
         let selectedContent = null;
 
-        // Handle book card clicks
-        document.querySelectorAll('.book-card').forEach(card => {
+        function switchTab(tabId) {
+            // Update buttons
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.getAttribute('onclick').includes(tabId)) {
+                    btn.classList.add('active');
+                }
+            });
+
+            // Update panels
+            document.querySelectorAll('.tab-panel').forEach(panel => {
+                panel.classList.remove('active');
+            });
+            document.getElementById(tabId).classList.add('active');
+        }
+
+        // Handle book card clicks in content picker tab
+        document.querySelectorAll('#book-list-content .book-card').forEach(card => {
             card.addEventListener('click', function(e) {
                 // Don't trigger if clicking the expand button
                 if (e.target.classList.contains('expand-btn')) {
@@ -501,7 +593,7 @@ $deployment_id = $data['deployment_id'] ?? '';
 
         function selectBook(card) {
             // Clear previous selections
-            document.querySelectorAll('.book-card').forEach(c => c.classList.remove('selected'));
+            document.querySelectorAll('#book-list-content .book-card').forEach(c => c.classList.remove('selected'));
             document.querySelectorAll('.chapter-item').forEach(c => c.classList.remove('selected'));
 
             card.classList.add('selected');
@@ -512,8 +604,17 @@ $deployment_id = $data['deployment_id'] ?? '';
                 url: card.dataset.bookUrl
             };
             selectedContent = null;
+            document.getElementById('is_results_viewer').value = '0'; // Reset
 
             updateSelection();
+        }
+
+        function submitResultsViewer(bookId, bookTitle, event) {
+            event.stopPropagation();
+            // No confirm needed now that it's in its own tab
+            document.getElementById('selected_book_id').value = bookId;
+            document.getElementById('is_results_viewer').value = '1';
+            document.getElementById('selection-form').submit();
         }
 
         function loadChapters(bookId, event) {
@@ -637,12 +738,12 @@ $deployment_id = $data['deployment_id'] ?? '';
 
         function updateSelection() {
             const submitBtn = document.getElementById('submit-btn');
-            const selectionInfo = document.getElementById('selection-info');
-            const selectedTitle = document.getElementById('selected-title');
+            const selectionInfo = document.getElementById('selection-info-content');
+            const selectedTitle = document.getElementById('selected-title-content');
 
             if (selectedBook) {
                 submitBtn.disabled = false;
-                selectionInfo.classList.add('visible');
+                selectionInfo.style.display = 'block';
 
                 if (selectedContent) {
                     selectedTitle.textContent = selectedContent.title;
@@ -651,7 +752,7 @@ $deployment_id = $data['deployment_id'] ?? '';
                 }
             } else {
                 submitBtn.disabled = true;
-                selectionInfo.classList.remove('visible');
+                selectionInfo.style.display = 'none';
             }
         }
 

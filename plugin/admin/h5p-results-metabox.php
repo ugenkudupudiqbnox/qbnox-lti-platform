@@ -233,6 +233,15 @@ class H5PResultsMetaBox {
                             </span>
                         </li>
                     </ul>
+
+                    <div style="margin-top: 15px;">
+                        <button type="button"
+                                id="pb-lti-view-results"
+                                class="button button-primary"
+                                data-post-id="<?php echo esc_attr($post->ID); ?>">
+                            📊 View Detailed Student Results
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Sync Existing Grades -->
@@ -276,6 +285,69 @@ class H5PResultsMetaBox {
                     <p>
                         <strong>Note:</strong> Grades are only sent for students who access this chapter via an LTI launch from your LMS.
                     </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results Viewer Modal -->
+        <div id="pb-lti-results-modal" style="display:none;">
+            <div class="pb-lti-modal-content">
+                <div class="pb-lti-modal-header">
+                    <h2>📊 H5P Chapter Results: <span class="pb-lti-modal-title"></span></h2>
+                    <button type="button" class="pb-lti-modal-close">&times;</button>
+                </div>
+                <div class="pb-lti-modal-body">
+                    <div id="pb-lti-modal-loading" style="text-align: center; padding: 40px;">
+                        <span class="spinner is-active" style="float: none;"></span>
+                        <p>Loading results...</p>
+                    </div>
+                    <div id="pb-lti-modal-error" style="display: none;" class="notice notice-error"></div>
+                    <div id="pb-lti-modal-data" style="display: none;">
+                        <div id="pb-lti-results-list-view">
+                            <div class="pb-lti-modal-controls" style="margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; background: #f8f9fa; padding: 12px; border: 1px solid #e5e7eb; border-radius: 4px;">
+                                <div class="pb-lti-search-box" style="flex: 1; margin-right: 20px;">
+                                    <input type="text" id="pb-lti-search-input" placeholder="🔍 Search by name or email..." style="width: 100%; max-width: 400px; padding: 8px 12px;">
+                                </div>
+                                <div class="pb-lti-pagination-controls" style="display: flex; align-items: center; gap: 10px;">
+                                    <span>Rows:</span>
+                                    <select id="pb-lti-per-page" style="width: 70px;">
+                                        <option value="10">10</option>
+                                        <option value="25">25</option>
+                                        <option value="50">50</option>
+                                        <option value="100">100</option>
+                                    </select>
+                                    <div class="pb-lti-page-nav" style="display: flex; align-items: center; gap: 5px;">
+                                        <button type="button" class="button pb-lti-prev-page" disabled>&larr;</button>
+                                        <span id="pb-lti-page-info">Page 1 of 1</span>
+                                        <button type="button" class="button pb-lti-next-page" disabled>&rarr;</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <table class="wp-list-table widefat fixed striped">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 25%;">Student</th>
+                                        <th style="width: 25%;">Email</th>
+                                        <th style="width: 20%;">Calculated Score</th>
+                                        <th style="width: 15%;">Grade</th>
+                                        <th style="width: 15%; text-align:center;">Details</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="pb-lti-results-table-body"></tbody>
+                            </table>
+                        </div>
+                        <div id="pb-lti-student-detail-view" style="display: none;">
+                            <div style="margin-bottom: 20px;">
+                                <button type="button" class="button button-secondary pb-lti-back-to-list">
+                                    &larr; Back to Student List
+                                </button>
+                                <span style="margin-left: 15px; font-weight: 600; font-size: 1.1em; vertical-align: middle;">
+                                    Student Details: <span id="pb-lti-detail-student-name"></span>
+                                </span>
+                            </div>
+                            <div id="pb-lti-student-detail-content"></div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -349,6 +421,108 @@ class H5PResultsMetaBox {
                 padding: 10px;
                 background: rgba(0,0,0,0.05);
                 border-radius: 3px;
+            }
+
+            /* Modal Styles */
+            #pb-lti-results-modal {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.5);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 10000;
+            }
+            .pb-lti-modal-content {
+                background: white;
+                width: 80%;
+                max-width: 1200px;
+                height: 80vh;
+                border-radius: 8px;
+                display: flex;
+                flex-direction: column;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            }
+            .pb-lti-modal-header {
+                padding: 15px 25px;
+                border-bottom: 1px solid #ddd;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                background: #f8f9fa;
+                border-radius: 8px 8px 0 0;
+            }
+            .pb-lti-modal-header h2 {
+                margin: 0;
+            }
+            .pb-lti-modal-close {
+                border: none;
+                background: none;
+                font-size: 28px;
+                cursor: pointer;
+                color: #555;
+            }
+            .pb-lti-modal-close:hover {
+                color: #000;
+            }
+            .pb-lti-modal-body {
+                flex: 1;
+                overflow-y: auto;
+                padding: 25px;
+            }
+            .pb-lti-student-details {
+                margin-top: 10px;
+                background: #fff;
+                padding: 15px;
+                border: 1px solid #eee;
+                border-radius: 4px;
+            }
+            .pb-lti-activity-summary {
+                margin-bottom: 10px;
+                padding: 8px;
+                border-bottom: 1px dashed #eee;
+            }
+            .pb-lti-activity-summary:last-child {
+                border-bottom: none;
+            }
+            .pb-lti-badge {
+                padding: 3px 8px;
+                background: #e2e8f0;
+                border-radius: 12px;
+                font-size: 11px;
+                font-weight: 600;
+            }
+            .pb-lti-badge-best { background: #dcfce7; color: #166534; }
+            .pb-lti-badge-average { background: #dbeafe; color: #1e40af; }
+            .pb-lti-badge-first { background: #fef3c7; color: #92400e; }
+            .pb-lti-badge-last { background: #f3e8ff; color: #6b21a8; }
+            .pb-lti-sync-history h4 {
+                margin: 20px 0 10px;
+                border-bottom: 2px solid #334155;
+                padding-bottom: 5px;
+                color: #334155;
+            }
+            .pb-lti-sync-history table td {
+                padding: 10px;
+            }
+            .pb-lti-student-details h4 {
+                margin: 20px 0 10px;
+                padding-bottom: 7px;
+                border-bottom: 2px solid #2271b1;
+                color: #1d2327;
+                font-size: 1.1em;
+            }
+            .pb-lti-student-details h4:first-of-type {
+                margin-top: 0;
+            }
+            .pb-lti-back-to-list {
+                font-weight: 600 !important;
+            }
+            #pb-lti-detail-student-name {
+                color: #2271b1;
             }
         </style>
 
@@ -449,6 +623,209 @@ class H5PResultsMetaBox {
                                .show();
                     }
                 });
+            });
+
+            // Results Viewer Modal Handlers
+            let allResults = [];
+            let currentPage = 1;
+            let rowsPerPage = 10;
+            let currentSearch = '';
+
+            function renderResults() {
+                const $tableBody = $('#pb-lti-results-table-body');
+                $tableBody.empty();
+
+                // 1. Filter results based on search
+                let filtered = allResults;
+                if (currentSearch) {
+                    const search = currentSearch.toLowerCase();
+                    filtered = allResults.filter(user => 
+                        (user.display_name && user.display_name.toLowerCase().includes(search)) ||
+                        (user.user_email && user.user_email.toLowerCase().includes(search))
+                    );
+                }
+
+                // 2. Handle Pagination Calculation
+                const totalRows = filtered.length;
+                const totalPages = Math.ceil(totalRows / rowsPerPage) || 1;
+                
+                // Ensure current page is valid
+                if (currentPage > totalPages) currentPage = totalPages;
+                if (currentPage < 1) currentPage = 1;
+
+                const start = (currentPage - 1) * rowsPerPage;
+                const end = start + rowsPerPage;
+                const pageData = filtered.slice(start, end);
+
+                // 3. Update UI Controls
+                $('#pb-lti-page-info').text(`Page ${currentPage} of ${totalPages}`);
+                $('.pb-lti-prev-page').prop('disabled', currentPage === 1);
+                $('.pb-lti-next-page').prop('disabled', currentPage === totalPages);
+
+                // 4. Render Rows
+                if (pageData.length === 0) {
+                    $tableBody.append('<tr><td colspan="5" style="text-align:center; padding: 20px;">No matching student results found.</td></tr>');
+                    return;
+                }
+
+                pageData.forEach(function(user) {
+                    let detailsHtml = '<div class="pb-lti-student-details">';
+                    
+                    detailsHtml += '<h4>Specific H5P Activity Results</h4>';
+                    Object.values(user.activities).forEach(function(activity) {
+                        const badgeClass = 'pb-lti-badge-' + activity.grading_scheme;
+                        detailsHtml += `<div class="pb-lti-activity-summary">
+                            <strong>${activity.title} (ID: ${activity.id})</strong><br>
+                            <span class="pb-lti-badge ${badgeClass}">${activity.grading_scheme.toUpperCase()}</span>
+                            Score: ${activity.calculated_score} / ${activity.max_score} | 
+                            Entries in Result DB: ${activity.attempts.length}
+                        </div>`;
+                    });
+                    
+                    detailsHtml += '<div class="pb-lti-sync-history"><h4>Submission/Sync History (Attempts)</h4>';
+                    if (user.history && user.history.length > 0) {
+                        detailsHtml += '<table class="wp-list-table widefat striped" style="margin-top:10px;">';
+                        detailsHtml += '<thead><tr><th>Time</th><th>Aggregated Score sent to LMS</th></tr></thead><tbody>';
+                        user.history.forEach(function(h) {
+                            const scoreText = h.score !== null ? `${h.score} / ${h.max_score}` : 'N/A (Legacy entry)';
+                            detailsHtml += `<tr>
+                                <td>${h.finished}</td>
+                                <td><strong>${scoreText}</strong></td>
+                            </tr>`;
+                        });
+                        detailsHtml += '</tbody></table>';
+                    } else {
+                        detailsHtml += '<p>No sync events found in results log.</p>';
+                    }
+                    detailsHtml += '</div>';
+                    detailsHtml += '</div>';
+
+                    const row = `<tr>
+                        <td><strong>${user.display_name}</strong></td>
+                        <td>${user.user_email}</td>
+                        <td>${user.total_calculated_score} / ${user.total_max}</td>
+                        <td><strong>${Math.round(user.total_percentage)}%</strong></td>
+                        <td style="text-align: center;">
+                            <button type="button" class="button button-link pb-lti-show-details" 
+                                    title="View Detailed Student Results"
+                                    data-student-name="${user.display_name}">
+                                <span class="dashicons dashicons-visibility" style="font-size: 20px; width: 20px; height: 20px; vertical-align: middle;"></span>
+                            </button>
+                            <div class="pb-lti-student-details-html" style="display:none;">${detailsHtml}</div>
+                        </td>
+                    </tr>`;
+                    $tableBody.append(row);
+                });
+            }
+
+            // Results Viewer Modal Handlers
+            $('#pb-lti-view-results').on('click', function() {
+                const postId = $(this).data('post-id');
+                const $modal = $('#pb-lti-results-modal');
+                const $title = $('.pb-lti-modal-title');
+                const $loading = $('#pb-lti-modal-loading');
+                const $error = $('#pb-lti-modal-error');
+                const $data = $('#pb-lti-modal-data');
+
+                // Reset modal state
+                $title.text($('#title').val() || 'Chapter ' + postId);
+                $loading.show();
+                $error.hide();
+                $data.hide();
+                $modal.css('display', 'flex'); 
+
+                // Fetch data via AJAX
+                $.post(ajaxurl, {
+                    action: 'qb_lti_get_h5p_results',
+                    post_id: postId,
+                    nonce: '<?php echo wp_create_nonce('pb_lti_h5p_results_nonce'); ?>'
+                }, function(response) {
+                    $loading.hide();
+                    
+                    if (response.success) {
+                        allResults = response.data.results || [];
+                        currentPage = 1;
+                        currentSearch = '';
+                        $('#pb-lti-search-input').val('');
+                        renderResults();
+                        $data.fadeIn();
+                    } else {
+                        $error.text(response.data.message || 'Unknown error fetching results').show();
+                    }
+                }).fail(function() {
+                    $loading.hide();
+                    $error.text('Network error. Failed to fetch results.').show();
+                });
+            });
+
+            // Pagination & Search Events
+            $('#pb-lti-search-input').on('input', function() {
+                currentSearch = $(this).val();
+                currentPage = 1;
+                renderResults();
+            });
+
+            // Prevent Form Submission on Enter in search box
+            $('#pb-lti-search-input').on('keydown', function(e) {
+                if (e.which === 13) {
+                    e.preventDefault();
+                    return false;
+                }
+            });
+
+            $('#pb-lti-per-page').on('change', function() {
+                rowsPerPage = parseInt($(this).val());
+                currentPage = 1;
+                renderResults();
+            });
+
+            $('.pb-lti-prev-page').on('click', function() {
+                if (currentPage > 1) {
+                    currentPage--;
+                    renderResults();
+                }
+            });
+
+            $('.pb-lti-next-page').on('click', function() {
+                currentPage++;
+                renderResults();
+            });
+
+            // Handle clicking the Eye icon (Student Detail View)
+            $(document).on('click', '.pb-lti-show-details', function(e) {
+                e.preventDefault();
+                const studentName = $(this).data('student-name');
+                const detailsHtml = $(this).siblings('.pb-lti-student-details-html').html();
+                
+                $('#pb-lti-detail-student-name').text(studentName);
+                $('#pb-lti-student-detail-content').html(detailsHtml);
+                
+                $('#pb-lti-results-list-view').hide();
+                $('#pb-lti-student-detail-view').fadeIn();
+            });
+
+            // Handle Back to List button
+            $(document).on('click', '.pb-lti-back-to-list', function() {
+                $('#pb-lti-student-detail-view').hide();
+                $('#pb-lti-results-list-view').fadeIn();
+            });
+
+            // Reset view when opening the modal again
+            $('#pb-lti-view-results').on('click', function() {
+                $('#pb-lti-student-detail-view').hide();
+                $('#pb-lti-results-list-view').show();
+            });
+
+            // Close modal
+            $('.pb-lti-modal-close').on('click', function() {
+                $('#pb-lti-results-modal').hide();
+            });
+
+            // Close on click outside (more robust)
+            $('#pb-lti-results-modal').on('mousedown', function(e) {
+                if ($(e.target).is('#pb-lti-results-modal')) {
+                    $(this).hide();
+                }
             });
         });
         </script>

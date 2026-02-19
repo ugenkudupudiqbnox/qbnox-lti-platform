@@ -301,4 +301,137 @@ class H5PResultsManager {
 
         return $attempts;
     }
+
+    /**
+     * Get detailed H5P results for all users for a chapter
+     *
+     * @param int $post_id Chapter post ID
+     * @return array Results grouped by user
+     */
+    public static function get_chapter_results($post_id) {
+        global $wpdb;
+        error_log("[PB-LTI] get_chapter_results for post $post_id. Prefix: " . $wpdb->prefix);
+
+        $config = self::get_configuration($post_id);
+        $activities = self::get_configured_activities($post_id);
+
+        if (empty($activities)) {
+            error_log("[PB-LTI] No configured activities for post $post_id. Attempting auto-detection.");
+            // Detection logic if not explicitly configured
+            $post = get_post($post_id);
+            if ($post) {
+                preg_match_all('/\[h5p id="(\d+)"\]/', $post->post_content, $matches);
+                if (!empty($matches[1])) {
+                    foreach (array_unique($matches[1]) as $hid) {
+                        $activities[] = [
+                            'h5p_id' => (int)$hid,
+                            'grading_scheme' => 'best',
+                            'weight' => 1.0
+                        ];
+                    }
+                    error_log("[PB-LTI] Auto-detected H5P IDs: " . implode(',', array_column($activities, 'h5p_id')));
+                }
+            }
+        }
+
+        if (empty($activities)) {
+            error_log("[PB-LTI] No H5P activities found for post $post_id");
+            return [];
+        }
+
+        $results_table = $wpdb->prefix . 'h5p_results';
+        $users_table = $wpdb->users;
+
+        // Get all H5P IDs
+        $h5p_ids = array_column($activities, 'h5p_id');
+        $placeholders = implode(',', array_fill(0, count($h5p_ids), '%d'));
+
+        // Query for results joined with user data
+        $query = $wpdb->prepare(
+            "SELECT r.id, r.user_id, r.content_id, r.score, r.max_score, r.finished, u.display_name, u.user_email
+             FROM {$results_table} r
+             JOIN {$users_table} u ON r.user_id = u.ID
+             WHERE r.content_id IN ($placeholders)
+             ORDER BY u.display_name ASC, r.finished DESC",
+            ...$h5p_ids
+        );
+        
+        error_log("[PB-LTI] Query: $query");
+
+        $raw_results = $wpdb->get_results($query, ARRAY_A);
+        error_log("[PB-LTI] Raw results count: " . count($raw_results));
+        $user_results = [];
+
+        // Group by user
+        foreach ($raw_results as $row) {
+            $user_id = (int)$row['user_id'];
+            if (!isset($user_results[$user_id])) {
+                $user_results[$user_id] = [
+                    'user_id' => $user_id,
+                    'display_name' => $row['display_name'],
+                    'user_email' => $row['user_email'],
+                    'activities' => [],
+                    'total_calculated_score' => 0,
+                    'total_percentage' => 0
+                ];
+            }
+
+            $h5p_id = (int)$row['content_id'];
+            if (!isset($user_results[$user_id]['activities'][$h5p_id])) {
+                $user_results[$user_id]['activities'][$h5p_id] = [
+                    'id' => $h5p_id,
+                    'result_id' => (int)$row['id'],
+                    'title' => self::get_h5p_title($h5p_id),
+                    'attempts' => [],
+                    'grading_scheme' => $config['activities'][$h5p_id]['scheme'] ?? 'best',
+                    'calculated_score' => 0,
+                    'max_score' => (int)$row['max_score']
+                ];
+            }
+
+            $user_results[$user_id]['activities'][$h5p_id]['attempts'][] = [
+                'id' => (int)$row['id'],
+                'score' => (float)$row['score'],
+                'max_score' => (float)$row['max_score'],
+                'finished' => $row['finished']
+            ];
+        }
+
+        // Calculate final grade for each user
+        foreach ($user_results as $uid => &$data) {
+            foreach ($data['activities'] as $hid => &$activity) {
+                $calc = self::calculate_score($uid, $post_id, $hid, $activity['grading_scheme']);
+                $activity['calculated_score' ] = $calc['score'];
+            }
+            $chapter_score = self::calculate_chapter_score($uid, $post_id);
+            $data['total_calculated_score'] = $chapter_score['score'];
+            $data['total_percentage'] = $chapter_score['percentage'];
+            $data['total_max'] = $chapter_score['max_score'];
+
+            // Fetch attempt history from sync logs for this user/post
+            $sync_table = $wpdb->prefix . 'lti_h5p_grade_sync_log';
+            $data['history'] = $wpdb->get_results($wpdb->prepare(
+                "SELECT result_id, score_sent as score, max_score, synced_at as finished, status, error_message 
+                 FROM {$sync_table} 
+                 WHERE user_id = %d AND post_id = %d 
+                 ORDER BY synced_at DESC",
+                $uid,
+                $post_id
+            ), ARRAY_A);
+        }
+
+        return $user_results;
+    }
+
+    /**
+     * Get H5P activity title
+     *
+     * @param int $h5p_id H5P content ID
+     * @return string
+     */
+    private static function get_h5p_title($h5p_id) {
+        global $wpdb;
+        $table = $wpdb->prefix . 'h5p_contents';
+        return $wpdb->get_var($wpdb->prepare("SELECT title FROM {$table} WHERE id = %d", $h5p_id)) ?: "H5P #$h5p_id";
+    }
 }

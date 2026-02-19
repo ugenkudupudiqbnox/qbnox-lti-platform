@@ -79,3 +79,35 @@ function pb_lti_ajax_sync_existing_grades() {
         ]);
     }
 }
+
+/**
+ * AJAX handler: Get all H5P results for a chapter
+ */
+add_action('wp_ajax_qb_lti_get_h5p_results', 'pb_lti_ajax_get_h5p_results');
+
+function pb_lti_ajax_get_h5p_results() {
+    // Security check
+    check_ajax_referer('pb_lti_h5p_results_nonce', 'nonce');
+
+    $post_id = isset($_POST['post_id']) ? intval($_POST['post_id']) : 0;
+    
+    if (!$post_id) {
+        wp_send_json_error(['message' => 'Invalid post ID']);
+        return;
+    }
+
+    if (!current_user_can('edit_post', $post_id) && !is_super_admin()) {
+        wp_send_json_error(['message' => 'Insufficient permissions']);
+        return;
+    }
+
+    try {
+        $results = \PB_LTI\Services\H5PResultsManager::get_chapter_results($post_id);
+        wp_send_json_success([
+            'results' => array_values($results),
+            'last_sync' => get_post_meta($post_id, '_lti_last_grade_sync', true) ?: 'Never'
+        ]);
+    } catch (\Exception $e) {
+        wp_send_json_error(['message' => 'Error fetching results: ' . $e->getMessage()]);
+    }
+}

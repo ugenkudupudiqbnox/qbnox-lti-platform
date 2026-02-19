@@ -169,6 +169,31 @@ class ContentService {
     }
 
     /**
+     * Get Results Viewer item for Deep Linking
+     *
+     * @param int $blog_id Book ID
+     * @return array Content item for Results Viewer
+     */
+    public static function get_results_viewer_item($blog_id) {
+        if (!is_multisite() || !$blog_id) {
+            return null;
+        }
+
+        switch_to_blog($blog_id);
+        $book_title = get_bloginfo('name');
+        $base_url = user_trailingslashit(get_site_url($blog_id));
+        $item = [
+            'type' => 'ltiResourceLink',
+            'title' => '📊 Results Viewer: ' . $book_title,
+            'url' => add_query_arg('pb_lti_results_viewer', '1', $base_url),
+            'text' => 'View detailed student H5P results and attempt history for this book.'
+        ];
+        restore_current_blog();
+
+        return $item;
+    }
+
+    /**
      * Get content item details for Deep Linking response
      *
      * @param int $blog_id Book ID

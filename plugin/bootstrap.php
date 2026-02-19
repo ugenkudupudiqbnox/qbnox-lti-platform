@@ -30,6 +30,7 @@ require_once PB_LTI_PATH.'Controllers/LoginController.php';
 require_once PB_LTI_PATH.'Controllers/LaunchController.php';
 require_once PB_LTI_PATH.'Controllers/DeepLinkController.php';
 require_once PB_LTI_PATH.'Controllers/AGSController.php';
+require_once PB_LTI_PATH.'Controllers/ResultsController.php';
 
 // Load admin, routes, and AJAX handlers
 require_once PB_LTI_PATH.'admin/menu.php';
@@ -47,6 +48,12 @@ add_action('plugins_loaded', 'pb_lti_run_migrations', 5);
 
 // Initialize embed mode for LTI launches (hides site chrome)
 add_action('template_redirect', ['PB_LTI\Services\EmbedService', 'init'], 1);
+
+// Initialize results viewer (frontend listener)
+\PB_LTI\Controllers\ResultsController::init();
+
+// Initialize frontend Results Viewer
+add_action('init', ['PB_LTI\Controllers\ResultsController', 'init']);
 
 // Initialize H5P Results meta box (Pressbooks-style grading configuration)
 add_action('admin_init', ['PB_LTI\Admin\H5PResultsMetaBox', 'init']);

@@ -104,6 +104,7 @@ class DeepLinkController {
         $book_id = intval($request->get_param('selected_book_id'));
         $content_id = $request->get_param('selected_content_id');
         $selected_chapter_ids = $request->get_param('selected_chapter_ids');  // Comma-separated IDs
+        $is_results_viewer = $request->get_param('is_results_viewer') === '1';
         $return_url = $request->get_param('deep_link_return_url');
         $client_id = $request->get_param('client_id');
 
@@ -130,7 +131,14 @@ class DeepLinkController {
         // Get selected content details
         $content_items = [];
 
-        if (!empty($selected_chapter_ids)) {
+        if ($is_results_viewer) {
+            // Results Viewer requested
+            $results_item = ContentService::get_results_viewer_item($book_id);
+            if ($results_item) {
+                $content_items[] = $results_item;
+                error_log('[PB-LTI Deep Link] Results Viewer selected for book ' . $book_id . ' (URL: ' . $results_item['url'] . ')');
+            }
+        } elseif (!empty($selected_chapter_ids)) {
             // Specific chapters selected - create activity for each selected chapter
             $chapter_ids = array_map('intval', explode(',', $selected_chapter_ids));
             error_log('[PB-LTI Deep Link] Selected chapters (IDs: ' . implode(', ', $chapter_ids) . ') from book ' . $book_id);
