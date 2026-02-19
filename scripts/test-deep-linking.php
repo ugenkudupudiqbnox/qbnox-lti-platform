@@ -73,7 +73,8 @@ if ($existing) {
 }
 
 echo "\n=== Deep Linking Test Ready ===\n";
-echo "1. Log in to Moodle: https://moodle.lti.qbnox.com/\n";
+$moodle_url = getenv('MOODLE_URL') ?: 'https://moodle.lti.qbnox.com';
+echo "1. Log in to Moodle: {$moodle_url}/\n";
 echo "2. Go to course: LTI Test Course\n";
 echo "3. Click: 'Deep Linking Test' activity\n";
 echo "4. You should see Pressbooks content selection\n";
@@ -81,6 +82,7 @@ echo "5. Select content and confirm\n";
 echo "6. Content link should be stored in Moodle\n";
 
 // Display tool configuration for verification
+$pb_url = getenv('PRESSBOOKS_URL') ?: 'https://pb.lti.qbnox.com';
 echo "\n=== Tool Configuration ===\n";
-echo "Deep Linking Endpoint: https://pb.lti.qbnox.com/wp-json/pb-lti/v1/deep-link\n";
+echo "Deep Linking Endpoint: {$pb_url}/wp-json/pb-lti/v1/deep-link\n";
 echo "Content Item supported: " . ($tool->lti_contentitem ? "YES" : "NO") . "\n";

@@ -79,9 +79,9 @@ This plugin provides **LTI 1.3 + LTI Advantage** connectivity between Pressbooks
 
 ```bash
 cd /path/to/pressbooks/web/app/plugins/
-git clone https://github.com/ugenkudupudiqbnox/qbnox-lti-platform.git pressbooks-lti-platform
-chown -R www-data:www-data pressbooks-lti-platform
-wp plugin activate pressbooks-lti-platform --network --allow-root
+git clone https://github.com/ugenkudupudiqbnox/qbnox-lti-platform.git qbnox-lti-platform
+chown -R www-data:www-data qbnox-lti-platform
+wp plugin activate qbnox-lti-platform --network --allow-root
 ```
 
 #### Option B: Composer (Bedrock)
@@ -101,14 +101,14 @@ Add to your root `composer.json`:
 
 ```bash
 composer update
-wp plugin activate pressbooks-lti-platform --network --allow-root
+wp plugin activate qbnox-lti-platform --network --allow-root
 ```
 
 #### Verify Plugin Installation
 
 ```bash
 # Plugin is network-active
-wp plugin list --status=active-network --allow-root | grep pressbooks-lti-platform
+wp plugin list --status=active-network --allow-root | grep qbnox-lti-platform
 
 # JWKS endpoint responds with RSA key
 curl https://your-pb-domain/wp-json/pb-lti/v1/keyset
@@ -181,7 +181,7 @@ require_once('/your/actual/path/to/wp-load.php');
 Then run on your Pressbooks server:
 
 ```bash
-php /path/to/pressbooks-lti-platform/scripts/pressbooks-register-platform.php \
+php /path/to/qbnox-lti-platform/scripts/pressbooks-register-platform.php \
   "https://your-moodle-domain.com" \
   "YOUR_CLIENT_ID" \
   "YOUR_DEPLOYMENT_ID"
@@ -380,7 +380,7 @@ No `.env` file = localhost defaults (correct for CI and local dev). PHP changes 
 ### Repository Structure
 
 ```
-pressbooks-lti-platform/
+qbnox-lti-platform/
 ├── plugin/                         # WordPress plugin — deploy this directory
 │   ├── Controllers/
 │   │   ├── LoginController.php     # OIDC login initiation
@@ -608,7 +608,7 @@ php -m | grep -E 'curl|json|mysqli|xml|mbstring'   # All must be listed
 wp db export backup-$(date +%Y%m%d).sql --allow-root
 
 # 2. Pull latest plugin code
-cd /path/to/plugins/pressbooks-lti-platform
+cd /path/to/plugins/qbnox-lti-platform
 git pull origin main
 
 # 3. Flush caches — DB migrations run automatically on next page load
@@ -619,10 +619,10 @@ wp cache flush --allow-root
 
 ```bash
 # Deactivate
-wp plugin deactivate pressbooks-lti-platform --network --allow-root
+wp plugin deactivate qbnox-lti-platform --network --allow-root
 
 # Remove files
-rm -rf /path/to/plugins/pressbooks-lti-platform
+rm -rf /path/to/plugins/qbnox-lti-platform
 
 # Optional: remove all plugin data
 wp db query "DROP TABLE IF EXISTS

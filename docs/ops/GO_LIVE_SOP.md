@@ -74,10 +74,10 @@ $CFG->sslproxy = true;  // If behind reverse proxy (Nginx, Apache)
 **Verify Plugin Installation:**
 ```bash
 # Check plugin status
-wp plugin list --status=active-network | grep pressbooks-lti-platform
+wp plugin list --status=active-network | grep qbnox-lti-platform
 
 # Verify Composer dependencies
-ls /path/to/plugins/pressbooks-lti-platform/vendor/firebase/php-jwt/
+ls /path/to/plugins/qbnox-lti-platform/vendor/firebase/php-jwt/
 
 # Check database tables
 wp db query "SHOW TABLES LIKE 'wp_lti_%'" --allow-root
@@ -118,7 +118,7 @@ The platform uses RS256 JWT signing. Generate a production key pair:
 
 ```bash
 # Navigate to plugin directory
-cd /path/to/pressbooks/web/app/plugins/pressbooks-lti-platform/
+cd /path/to/pressbooks/web/app/plugins/qbnox-lti-platform/
 
 # Generate RSA key pair
 php scripts/generate-rsa-keys.php
@@ -646,10 +646,10 @@ Documentation: https://github.com/your-org/qbnox-lti-platform/docs
 **Step 1: Disable Plugin (Immediate)**
 ```bash
 # Network deactivate plugin
-wp plugin deactivate pressbooks-lti-platform --network --allow-root
+wp plugin deactivate qbnox-lti-platform --network --allow-root
 
 # Verify disabled
-wp plugin list | grep pressbooks-lti-platform
+wp plugin list | grep qbnox-lti-platform
 # Should show: inactive
 ```
 

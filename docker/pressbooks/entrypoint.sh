@@ -214,7 +214,7 @@ chmod -R 775 web/app/uploads
 chmod -R 775 web/app/cache
 
 # Install LTI plugin Composer dependencies
-LTI_PLUGIN_PATH="${APP_ROOT}/web/app/plugins/pressbooks-lti-platform"
+LTI_PLUGIN_PATH="${APP_ROOT}/web/app/plugins/qbnox-lti-platform"
 if [ -d "$LTI_PLUGIN_PATH" ] && [ -f "$LTI_PLUGIN_PATH/composer.json" ]; then
   if [ ! -d "$LTI_PLUGIN_PATH/vendor" ]; then
     echo "Installing LTI plugin dependencies..."

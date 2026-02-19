@@ -38,10 +38,11 @@ if ($oldtool = $DB->get_record('lti_types', ['name' => $name])) {
 $type = new stdClass();
 $type->state = LTI_TOOL_STATE_CONFIGURED;
 $type->course = 1; // Site tool
-$type->coursevisible = 2; // Show in activity chooser and preconfigured tools
+$type->coursevisible = 2; // LTI_COURSE_VISIBLE_ACTIVITYCHOOSER (2)
 
 $config = new stdClass();
 $config->lti_typename = $name;
+$config->lti_coursevisible = 2; // Also set in config for good measure
 $config->lti_toolurl = $baseurl;
 $config->lti_ltiversion = '1.3.0';
 $config->lti_contentitem = 1; // Enable Deep Linking
@@ -79,6 +80,13 @@ if ($moodle_version >= 4.3) {
 $config->lti_pubkey = ''; // Clear RSA key if any
 $config->lti_initiatelogin = $login_url;
 $config->lti_redirectionuris = $redirect_uri;
+$config->lti_coursevisible = 2; 
+
+$config->key_set_url = $jwks_url;
+$config->initiate_login_url = $login_url;
+$config->redirection_uris = $redirect_uri;
+$config->keytype = ($moodle_version >= 4.3) ? 'JWK_KEYSET' : 2;
+$config->publickeyset = $jwks_url;
 
 $config->token_url = str_replace('/keyset', '/token', $jwks_url);
 $config->auth_request_url = str_replace('/keyset', '/auth', $jwks_url);

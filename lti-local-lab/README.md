@@ -142,7 +142,7 @@ Inside Pressbooks container:
 ```bash
 docker exec -it pressbooks bash
 cd /var/www/html/wp-content/plugins
-git clone https://github.com/<you>/pressbooks-lti-platform.git
+git clone https://github.com/<you>/qbnox-lti-platform.git
 ```
 
 Then:

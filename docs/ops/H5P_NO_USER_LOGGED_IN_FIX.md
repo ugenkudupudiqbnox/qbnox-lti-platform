@@ -180,7 +180,7 @@ add_action('init', ['PB_LTI\Services\SessionMonitorService', 'init']);
 
 ### Modified Files
 - `plugin/bootstrap.php` - Disabled Session Monitor
-- `plugin/pressbooks-lti-platform.php` - Loads cookie override early
+- `plugin/qbnox-lti-platform.php` - Loads cookie override early
 
 ### New Files
 - `plugin/lti-cookie-override.php` - WordPress cookie function override
@@ -199,7 +199,7 @@ add_action('init', ['PB_LTI\Services\SessionMonitorService', 'init']);
 
 **Check Session Monitor:**
 ```bash
-docker exec pressbooks grep "SessionMonitorService" /var/www/pressbooks/web/app/plugins/pressbooks-lti-platform/bootstrap.php
+docker exec pressbooks grep "SessionMonitorService" /var/www/pressbooks/web/app/plugins/qbnox-lti-platform/bootstrap.php
 ```
 
 **Expected**: Line should be commented out:

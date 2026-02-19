@@ -42,7 +42,7 @@ log_header() {
 
 # Check if running from correct directory
 if [ ! -f "docker-compose.yml" ]; then
-    log_error "Please run this script from /root/pressbooks-lti-platform/lti-local-lab/"
+    log_error "Please run this script from /root/qbnox-lti-platform/lti-local-lab/"
     exit 1
 fi
 

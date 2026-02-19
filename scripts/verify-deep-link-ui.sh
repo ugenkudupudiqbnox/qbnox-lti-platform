@@ -78,10 +78,10 @@ echo ""
 echo "📁 Test 4: Verifying plugin files in container..."
 
 FILES_TO_CHECK=(
-    "/var/www/html/web/app/plugins/pressbooks-lti-platform/Services/ContentService.php"
-    "/var/www/html/web/app/plugins/pressbooks-lti-platform/views/deep-link-picker.php"
-    "/var/www/html/web/app/plugins/pressbooks-lti-platform/ajax/handlers.php"
-    "/var/www/html/web/app/plugins/pressbooks-lti-platform/Controllers/DeepLinkController.php"
+    "/var/www/html/web/app/plugins/qbnox-lti-platform/Services/ContentService.php"
+    "/var/www/html/web/app/plugins/qbnox-lti-platform/views/deep-link-picker.php"
+    "/var/www/html/web/app/plugins/qbnox-lti-platform/ajax/handlers.php"
+    "/var/www/html/web/app/plugins/qbnox-lti-platform/Controllers/DeepLinkController.php"
 )
 
 ALL_FILES_EXIST=true
@@ -115,7 +115,7 @@ if [ "$ALL_FILES_EXIST" = true ]; then
 else
     echo -e "${RED}❌ Some files are missing${NC}"
     echo "   Run the following to copy files to container:"
-    echo "   docker cp plugin/ajax pressbooks:/var/www/html/web/app/plugins/pressbooks-lti-platform/"
-    echo "   docker cp plugin/views pressbooks:/var/www/html/web/app/plugins/pressbooks-lti-platform/"
-    echo "   docker cp plugin/Services/ContentService.php pressbooks:/var/www/html/web/app/plugins/pressbooks-lti-platform/Services/"
+    echo "   docker cp plugin/ajax pressbooks:/var/www/html/web/app/plugins/qbnox-lti-platform/"
+    echo "   docker cp plugin/views pressbooks:/var/www/html/web/app/plugins/qbnox-lti-platform/"
+    echo "   docker cp plugin/Services/ContentService.php pressbooks:/var/www/html/web/app/plugins/qbnox-lti-platform/Services/"
 fi

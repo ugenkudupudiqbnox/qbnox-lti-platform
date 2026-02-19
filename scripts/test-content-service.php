@@ -11,7 +11,7 @@ define('WP_USE_THEMES', false);
 require_once('/var/www/pressbooks/web/wp/wp-load.php');
 
 // Load ContentService
-require_once('/var/www/html/web/app/plugins/pressbooks-lti-platform/Services/ContentService.php');
+require_once('/var/www/html/web/app/plugins/qbnox-lti-platform/Services/ContentService.php');
 
 use PB_LTI\Services\ContentService;
 

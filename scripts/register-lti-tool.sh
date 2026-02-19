@@ -18,11 +18,12 @@ echo "🔐 Unblocking local network requests in Moodle..."
 sudo docker exec moodle php admin/cli/cfg.php --name=curlsecurityblockedhosts --set=""
 
 # Run the registration script and capture output
+# Note: redirection_uris must include both launch and deep-link endpoints
 OUTPUT=$(sudo docker exec moodle php /var/www/html/moodle-register-tool.php \
   --name='Pressbooks LTI Platform' \
   --baseurl="${PRESSBOOKS_URL}" \
   --initiate_login_url="${PRESSBOOKS_URL}/wp-json/pb-lti/v1/login" \
-  --redirect_uri="${PRESSBOOKS_URL}/wp-json/pb-lti/v1/launch" \
+  --redirect_uri="${PRESSBOOKS_URL}/wp-json/pb-lti/v1/launch"$'\n'"${PRESSBOOKS_URL}/wp-json/pb-lti/v1/deep-link" \
   --jwks_url="${PRESSBOOKS_URL}/wp-json/pb-lti/v1/keyset" \
   --content_selection_url="${PRESSBOOKS_URL}/wp-json/pb-lti/v1/deep-link")
 

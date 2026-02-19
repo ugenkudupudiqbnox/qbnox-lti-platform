@@ -9,7 +9,7 @@ LAB_DIR="$PWD"
 fi
 MOODLE_HOST="moodle.local"
 PRESSBOOKS_HOST="pressbooks.local"
-PLUGIN_REPO="https://github.com/<YOUR_ORG>/pressbooks-lti-platform.git"
+PLUGIN_REPO="https://github.com/<YOUR_ORG>/qbnox-lti-platform.git"
 
 echo "🚀 Setting up Pressbooks + Moodle LTI local lab"
 
@@ -100,10 +100,10 @@ PRESSBOOKS_CONTAINER=$(docker ps --filter "ancestor=pressbooks/pressbooks" --for
 
 docker exec "$PRESSBOOKS_CONTAINER" bash -c "
   cd /var/www/html/wp-content/plugins &&
-  if [ ! -d pressbooks-lti-platform ]; then
-    git clone $PLUGIN_REPO pressbooks-lti-platform
+  if [ ! -d qbnox-lti-platform ]; then
+    git clone $PLUGIN_REPO qbnox-lti-platform
   fi
-  wp plugin activate pressbooks-lti-platform --network
+  wp plugin activate qbnox-lti-platform --network
 "
 
 ### 8. Final output ###
