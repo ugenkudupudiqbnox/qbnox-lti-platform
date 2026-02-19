@@ -184,7 +184,7 @@ add_action('init', ['PB_LTI\Services\SessionMonitorService', 'init']);
 
 ### New Files
 - `plugin/lti-cookie-override.php` - WordPress cookie function override
-- `docs/H5P_NO_USER_LOGGED_IN_FIX.md` - This documentation
+- `docs/ops/H5P_NO_USER_LOGGED_IN_FIX.md` - This documentation
 
 ### Referenced Features
 - Session Monitor (`plugin/Services/SessionMonitorService.php`)
@@ -226,7 +226,7 @@ docker exec pressbooks grep "SessionMonitorService" /var/www/pressbooks/web/app/
 - H5P grading configuration enabled for chapter
 - Platform OAuth2 credentials correct
 
-**See**: `docs/TROUBLESHOOTING_AGS.md`
+**See**: `docs/SETUP_GUIDE.md` — Troubleshooting section
 
 ---
 
@@ -264,22 +264,6 @@ docker exec pressbooks grep "SessionMonitorService" /var/www/pressbooks/web/app/
 - Let Pressbooks session expire naturally
 
 ---
-
-## Commit Information
-
-**Commit Hash**: `[to be added]`
-**Commit Message**: `fix: disable Session Monitor causing premature logouts and H5P errors`
-
-**Changes:**
-- Disabled Session Monitor in bootstrap.php (requires CORS configuration first)
-- Added comprehensive documentation of root cause and resolution
-- Preserved cookie override implementation for future use
-- Updated troubleshooting guides
-
-**Testing:**
-- Manual testing: ✅ H5P completion works without errors
-- Grade sync: ✅ Scores post to Moodle successfully
-- Session persistence: ✅ Users remain logged in throughout activity
 
 ---
 
