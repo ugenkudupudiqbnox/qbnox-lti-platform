@@ -268,8 +268,6 @@ Grade processing and LTI service tasks require Moodle's cron to run every minute
 
 ## Part 2 — Instructor Configuration
 
-> For a printable one-page reference covering all instructor tasks, see [docs/INSTRUCTOR_QUICK_REFERENCE.md](INSTRUCTOR_QUICK_REFERENCE.md).
-
 ### Adding Chapters via Deep Linking
 
 **Always use Deep Linking** when adding chapters that require grade sync. Deep Linking is what tells Moodle to create a grade column — manually entering a URL will not create one.
@@ -320,6 +318,8 @@ If students completed H5P activities before you enabled grading:
 3. Confirm → review the summary (synced / skipped / failed)
 
 Students are skipped if they accessed the chapter directly (not via LTI launch) — they have no lineitem URL stored, so no grade can be posted.
+
+> For a one-page instructor reference covering all tasks above (Deep Linking, grading setup, grade sync, troubleshooting), see [INSTRUCTOR_QUICK_REFERENCE.md](INSTRUCTOR_QUICK_REFERENCE.md).
 
 ---
 
