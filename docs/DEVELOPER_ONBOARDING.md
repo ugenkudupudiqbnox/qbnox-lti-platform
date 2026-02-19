@@ -310,9 +310,11 @@ If you find a vulnerability:
 
 ### AGS fails
 
-* Check scopes
-* Check client secret
-* Check token cache expiry
+* **JWT has no AGS endpoint claim (`has_ags=no`)**: Check that `mdl_lti_types_config` has `ltiservice_gradesynchronization=2` for the tool type. Moodle's `get_launch_parameters` only injects AGS claims when this key is present. Using `ags_grades_service` (wrong key) silently does nothing because `lti_add_type()` saves `ltiservice_*` keys as-is but strips `lti_*` prefixes. Run `make enable-lti` to re-register with the correct config.
+* **lineitem not stored after launch**: If `has_ags=yes` but `_lti_ags_lineitem_user_{id}` is missing from `wp_2_postmeta`, check that `mdl_ltiservice_gradebookservices` has a row for this LTI activity's `ltilinkid`. This is created by Moodle when Deep Linking returns a `lineItem` field.
+* Check OAuth2 scopes granted in Moodle tool config
+* Check client secret stored in `SecretVault`
+* Check token cache expiry (60min)
 
 ---
 
