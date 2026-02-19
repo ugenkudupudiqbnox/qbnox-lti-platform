@@ -59,7 +59,7 @@ This document maps automated CI evidence to official **1EdTech LTI 1.3 & LTI Adv
 | Execution logs | CI artifacts |
 | DB persistence | Moodle DB dump |
 | Test reproducibility | Docker + Makefile |
-| Evidence export | CI_EVIDENCE.md |
+| Evidence export | CI artifacts (GitHub Actions uploads) |
 
 ---
 
@@ -71,5 +71,5 @@ All mandatory LTI 1.3 + Advantage requirements are covered by automated or manua
 
 ---
 
-Maintained by: Pressbooks LTI Platform  
-Last updated: 2026-02-01
+Maintained by: Pressbooks LTI Platform
+Last updated: 2026-02-19
