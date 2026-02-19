@@ -286,7 +286,7 @@ Contact your administrator to add support for additional scales.
 
 ## 🆘 Need Help?
 
-- **Installation Issues:** See `docs/INSTALLATION.md`
+- **Installation Issues:** See `docs/SETUP_GUIDE.md`
 - **Testing Guide:** See `docs/TESTING_DEEP_LINKING_AND_AGS.md`
 - **Developer Docs:** See `docs/DEVELOPER_ONBOARDING.md`
 - **Troubleshooting:** See `docs/SESSION_MONITOR_TESTING.md`

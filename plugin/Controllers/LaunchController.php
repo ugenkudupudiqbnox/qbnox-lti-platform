@@ -43,6 +43,7 @@ class LaunchController {
 
         // Store AGS context for grade passback (if available)
         $ags_claim = $claims->{'https://purl.imsglobal.org/spec/lti-ags/claim/endpoint'} ?? null;
+        error_log('[PB-LTI AGS] user=' . $user_id . ' target_url=' . $target_link_uri . ' resolved_post=' . ($resolved['post_id'] ?? 'null') . ' resolved_blog=' . ($resolved['blog_id'] ?? 'null') . ' has_ags=' . ($ags_claim ? 'yes' : 'no') . ' has_lineitem=' . ($ags_claim && isset($ags_claim->lineitem) ? $ags_claim->lineitem : 'no'));
         if ($ags_claim && isset($ags_claim->lineitem)) {
             // Use already resolved post_id and blog_id
             $post_id = $resolved['post_id'] ?? 0;

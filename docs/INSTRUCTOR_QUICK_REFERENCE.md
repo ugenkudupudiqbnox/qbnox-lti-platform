@@ -190,15 +190,14 @@ When done, close the Pressbooks tab or log out of Moodle.
 ### Documentation
 
 - **New Features:** `docs/NEW_FEATURES_2026.md`
-- **Full User Guide:** `docs/USER_GUIDE.md`
+- **Setup & Developer Guide:** `docs/SETUP_GUIDE.md`
 - **Grading Details:** `docs/H5P_RESULTS_GRADING.md`
 - **Deep Linking:** `docs/DEEP_LINKING_CONTENT_PICKER.md`
-- **Troubleshooting:** `docs/SESSION_MONITOR_TESTING.md`
 
 ### Support
 
 - **IT Help Desk:** Contact your institution's support
-- **Technical Issues:** Check `docs/INSTALLATION.md`
+- **Technical Issues:** Check `docs/SETUP_GUIDE.md`
 - **Bug Reports:** GitHub Issues (if applicable)
 
 ---

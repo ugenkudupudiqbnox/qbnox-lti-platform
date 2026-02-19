@@ -219,5 +219,5 @@ A: Yes! The normal H5P grade sync (via `h5p_alter_user_result` hook) continues t
 **Version:** 1.0.0
 **Last Updated:** 2026-02-14
 **Related Documentation:**
-- [H5P Results Installation](H5P_RESULTS_INSTALLATION.md)
+- [Setup Guide](SETUP_GUIDE.md)
 - [H5P Results Grading](H5P_RESULTS_GRADING.md)

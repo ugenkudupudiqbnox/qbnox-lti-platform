@@ -107,7 +107,7 @@ curl -I https://your-pressbooks-domain.com/wp-json/pb-lti/v1/deep-link
 **Recommended User Documentation:**
 - `docs/NEW_FEATURES_2026.md` - Feature overview for instructors
 - `docs/INSTRUCTOR_QUICK_REFERENCE.md` - Quick reference card
-- `docs/INSTALLATION.md` - Technical installation guide
+- `docs/SETUP_GUIDE.md` - Technical installation guide
 
 ---
 
@@ -887,7 +887,7 @@ wp db query "DELETE FROM wp_lti_keys WHERE kid = 'old-kid-here'" --allow-root
 ### User Documentation
 - **Feature Overview:** `docs/NEW_FEATURES_2026.md`
 - **Quick Reference:** `docs/INSTRUCTOR_QUICK_REFERENCE.md`
-- **Installation Guide:** `docs/INSTALLATION.md`
+- **Installation Guide:** `docs/SETUP_GUIDE.md`
 - **H5P Grading Guide:** `docs/H5P_RESULTS_GRADING.md`
 - **Deep Linking Guide:** `docs/DEEP_LINKING_CONTENT_PICKER.md`
 - **Retroactive Sync Guide:** `docs/RETROACTIVE_GRADE_SYNC.md`
