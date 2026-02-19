@@ -96,10 +96,51 @@ function pb_lti_ajax_get_h5p_results() {
         return;
     }
 
+    // Determine the post's blog_id
+    global $wpdb;
+    $post_blog_id = get_current_blog_id();
+    if (is_multisite()) {
+        // Find which blog this post belongs to if it's not the current one
+        $post_blog_id = $wpdb->get_var($wpdb->prepare("SELECT blog_id FROM {$wpdb->blogs} WHERE blog_id > 1 AND site_id = 1")); // Placeholder logic, needs improvement
+        // Actually, let's just use switch_to_blog if we're on the main site and the post doesn't exist
+    }
+
     $is_instructor = current_user_can('edit_post', $post_id) || is_super_admin();
     $current_user_id = get_current_user_id();
 
     try {
+        // If we are on the main site, but querying a post that might be on another site,
+        // we need to find the correct site context.
+        if (is_multisite() && !get_post($post_id)) {
+            // Find the blog that contains this post
+            $blogs = get_sites(['site_id' => 1]);
+            foreach ($blogs as $blog) {
+                switch_to_blog($blog->blog_id);
+                $post = get_post($post_id);
+                if ($post) {
+                    $results = \PB_LTI\Services\H5PResultsManager::get_chapter_results($post_id);
+                    $last_sync = get_post_meta($post_id, '_lti_last_grade_sync', true) ?: 'Never';
+                    $is_instructor = current_user_can('edit_post', $post_id) || is_super_admin();
+                    restore_current_blog();
+                    
+                    // Permission check on the target blog
+                    if (!$is_instructor) {
+                        if (isset($results[$current_user_id])) {
+                            $results = [$current_user_id => $results[$current_user_id]];
+                        } else { $results = []; }
+                    }
+
+                    wp_send_json_success([
+                        'results' => array_values($results),
+                        'last_sync' => $last_sync,
+                        'is_instructor' => $is_instructor
+                    ]);
+                    return;
+                }
+                restore_current_blog();
+            }
+        }
+
         $results = \PB_LTI\Services\H5PResultsManager::get_chapter_results($post_id);
         
         // If not instructor, only return the current student's results

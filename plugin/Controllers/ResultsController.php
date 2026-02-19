@@ -379,40 +379,30 @@ class ResultsController {
     }
 
     private static function get_grading_chapters($blog_id) {
+        switch_to_blog($blog_id);
+        $posts = get_posts(['post_type'=>['chapter','front-matter','back-matter'], 'posts_per_page'=>-1, 'meta_key'=>'_lti_h5p_grading_enabled', 'meta_value'=>'1']);
         $res = [];
-        $blog_list = [];
-        
-        if (is_multisite() && $blog_id == get_main_site_id()) {
-            // If on main site, scan across all sites where user has permissions or all sites if super admin
-            $blog_list = get_sites(['site_id' => get_current_network_id(), 'spam' => 0, 'deleted' => 0]);
-        } else {
-            $blog_list = [(object)['blog_id' => $blog_id]];
+        foreach($posts as $p) {
+            $acts = H5PActivityDetector::find_h5p_activities($p->ID);
+            $res[] = ['id'=>$p->ID, 'title'=>$p->post_title, 'h5p_count'=>count($acts)];
         }
+        restore_current_blog();
 
-        foreach ($blog_list as $blog) {
-            $bid = (int)$blog->blog_id;
-            switch_to_blog($bid);
-            
-            // Only search if user can manage this specific blog's contents
-            if (current_user_can('edit_posts') || is_super_admin()) {
-                $posts = get_posts([
-                    'post_type' => ['chapter', 'front-matter', 'back-matter'], 
-                    'posts_per_page' => -1, 
-                    'meta_key' => '_lti_h5p_grading_enabled', 
-                    'meta_value' => '1'
-                ]);
-                
-                foreach ($posts as $p) {
+        // If no chapters found on current blog AND we are super admins, look for other blogs
+        // This handles cases where Moodle Admins launch onto the main site context
+        if (empty($res) && is_super_admin()) {
+            $blogs = get_sites(['site_id' => 1, 'number' => 20]);
+            foreach ($blogs as $blog) {
+                if ($blog->blog_id == $blog_id) continue;
+                switch_to_blog($blog->blog_id);
+                $other_posts = get_posts(['post_type'=>['chapter','front-matter','back-matter'], 'posts_per_page'=>-1, 'meta_key'=>'_lti_h5p_grading_enabled', 'meta_value'=>'1']);
+                foreach($other_posts as $p) {
                     $acts = H5PActivityDetector::find_h5p_activities($p->ID);
-                    $site_name = ($bid == $blog_id) ? '' : '[' . get_bloginfo('name') . '] ';
-                    $res[] = [
-                        'id' => $p->ID, 
-                        'title' => $site_name . $p->post_title, 
-                        'h5p_count' => count($acts)
-                    ];
+                    $res[] = ['id'=>$p->ID, 'title' => '[' . get_bloginfo('name') . '] ' . $p->post_title, 'h5p_count'=>count($acts)];
                 }
+                restore_current_blog();
+                if (count($res) > 50) break; // Limit the global selector size
             }
-            restore_current_blog();
         }
         return $res;
     }

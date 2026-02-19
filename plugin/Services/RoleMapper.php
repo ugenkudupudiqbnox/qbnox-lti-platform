@@ -5,13 +5,21 @@ class RoleMapper {
     public static function login_user($claims, $blog_id = 1) {
         $roles = $claims->{'https://purl.imsglobal.org/spec/lti/claim/roles'} ?? [];
         $wp_role = 'subscriber';
-        $is_admin_role = false;
+        $is_institutional_admin = false;
 
         foreach ($roles as $role) {
-            if (str_contains($role, 'Instructor') || str_contains($role, 'Administrator')) {
-                // We use 'administrator' for instructors in their own book to ensure full control over H5P content & libraries
+            // Check for any form of Administrator or Site-level admin
+            if (str_contains($role, 'Administrator') || str_contains($role, 'Manager') || str_contains($role, 'SystemAdmin')) {
                 $wp_role = 'administrator';
-                $is_admin_role = true;
+                // Check if this is a high-level admin (institution or system level)
+                if (str_contains($role, 'institution/person#Administrator') || str_contains($role, 'system/person#Administrator')) {
+                    $is_institutional_admin = true;
+                }
+                break;
+            }
+            if (str_contains($role, 'Instructor') || str_contains($role, 'Faculty')) {
+                // Instructors get administrator role at the blog level
+                $wp_role = 'administrator';
                 break;
             }
         }
@@ -145,24 +153,20 @@ class RoleMapper {
 
         $user = get_user_by('id', $user_id);
 
-        if (is_multisite() && $blog_id != get_current_blog_id()) {
-            add_user_to_blog($blog_id, $user_id, $wp_role);
-            error_log('[PB-LTI] Added user ' . $user_id . ' to blog ' . $blog_id . ' with role ' . $wp_role);
-            
-            // If the user belongs to a Moodle/LTI Admin role and lands on the MAIN network site, 
-            // elevate them to Network Admin (Super Admin) to allow cross-book result viewing.
-            if ($is_admin_role && floatval($blog_id) === floatval(get_main_site_id())) {
+        if (is_multisite()) {
+            // Institutional administrators should be Super Admins
+            if ($is_institutional_admin && !is_super_admin($user_id)) {
                 require_once(ABSPATH . 'wp-admin/includes/ms.php');
                 grant_super_admin($user_id);
-                error_log('[PB-LTI] Elevated user ' . $user_id . ' to Super Admin for network ' . get_current_network_id());
+                error_log('[PB-LTI] Granted Super Admin status to institutional administrator: ' . $user_id);
             }
-        } else if (is_multisite()) {
-             // Already in the correct blog, but check if we need to elevate to super admin
-             if ($is_admin_role && floatval($blog_id) === floatval(get_main_site_id())) {
-                 require_once(ABSPATH . 'wp-admin/includes/ms.php');
-                 grant_super_admin($user_id);
-             }
-             $user->set_role($wp_role);
+
+            if ($blog_id != get_current_blog_id()) {
+                add_user_to_blog($blog_id, $user_id, $wp_role);
+                error_log('[PB-LTI] Added user ' . $user_id . ' to blog ' . $blog_id . ' with role ' . $wp_role);
+            } else {
+                $user->set_role($wp_role);
+            }
         } else {
             $user->set_role($wp_role);
         }
