@@ -51,9 +51,9 @@ $client_id = 'pressbooks_client_dev'; // Use stable client ID for development
 $config->lti_clientid = $client_id;
 
 // Enable Advantage services
-$config->lti_ags_grades_service = 2; // Full grade sync
-$config->lti_ags_results_service = 1; // View results
-$config->lti_course_memberships_service = 1; // Access course roster
+// NOTE: ltiservice_* keys are stored as-is by lti_add_type (not stripped like lti_* keys)
+// Moodle's gradebookservices checks for 'ltiservice_gradesynchronization' in typeconfig
+$config->ltiservice_gradesynchronization = 2; // 2=FULL: read + write scores (required for AGS JWT claim)
 $config->lti_acceptgrades = 2; // Delegate: no default grade column; lineItem in Deep Linking response creates one selectively
 $config->lti_sendname = 1; // Delegate to teacher
 $config->lti_sendemailaddr = 1; // Delegate to teacher
