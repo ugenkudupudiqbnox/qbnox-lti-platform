@@ -86,9 +86,9 @@ For official Pressbooks products and support, visit [pressbooks.com](https://pre
 
 ## Getting Started
 
-See:
-- [docs/ops/GO_LIVE_SOP.md](docs/ops/GO_LIVE_SOP.md)
-- [docs/compliance/](docs/compliance/)
+- [docs/SETUP_GUIDE.md](docs/SETUP_GUIDE.md) — Installation, Moodle/Pressbooks configuration, H5P grade sync, and developer onboarding
+- [docs/ops/GO_LIVE_SOP.md](docs/ops/GO_LIVE_SOP.md) — Production go-live checklist
+- [docs/compliance/](docs/compliance/) — 1EdTech, ISO 27001, SOC 2 evidence
 
 ---
 
