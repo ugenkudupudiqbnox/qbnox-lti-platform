@@ -189,10 +189,10 @@ When done, close the Pressbooks tab or log out of Moodle.
 
 ### Documentation
 
-- **New Features:** `docs/NEW_FEATURES_2026.md`
-- **Setup & Developer Guide:** `docs/SETUP_GUIDE.md`
+- **Setup & Configuration:** `docs/SETUP_GUIDE.md`
 - **Grading Details:** `docs/H5P_RESULTS_GRADING.md`
 - **Deep Linking:** `docs/DEEP_LINKING_CONTENT_PICKER.md`
+- **Retroactive Sync:** `docs/RETROACTIVE_GRADE_SYNC.md`
 
 ### Support
 

@@ -1,18 +1,17 @@
-# Go-Live SOP – Pressbooks LTI Platform v2.1.0
+# Go-Live SOP – Pressbooks LTI Platform v2.2.0
 
-**Last Updated:** February 15, 2026
-**Plugin Version:** v2.1.0+
+**Last Updated:** February 19, 2026
+**Plugin Version:** v2.2.0+
 **Target Audience:** DevOps, System Administrators, IT Directors
 
 ---
 
 ## Overview
 
-This Standard Operating Procedure (SOP) covers production deployment of the Pressbooks LTI Platform with all v2.1.0 features, including:
+This Standard Operating Procedure (SOP) covers production deployment of the Pressbooks LTI Platform with all v2.2.0 features, including:
 - LTI 1.3 Core + LTI Advantage (AGS)
 - Deep Linking 2.0 with interactive content picker
 - H5P Results grading with chapter-level configuration
-- Bidirectional single sign-out
 - Chapter-specific grade routing
 - Scale grading support
 - Retroactive grade synchronization
@@ -438,28 +437,7 @@ echo "Chapter $post_id, User $user_id lineitem: $lineitem\n";
 - Default Competence Scale (2 items: Not yet competent / Competent)
 - Separate and Connected Ways of Knowing (3 items)
 
-### Step 3.7: Test Bidirectional Logout (If CORS Enabled)
-
-**Test Flow:**
-1. As student, launch Pressbooks from Moodle
-2. Verify logged into Pressbooks
-3. In another browser tab, log out of Moodle
-4. Wait 60 seconds
-5. Verify:
-   - [ ] Pressbooks automatically logs out
-   - [ ] Redirected back to Moodle
-
-**Alternative Test:**
-1. Use browser dev tools (F12) → Console
-2. Look for session monitoring messages:
-   ```javascript
-   [Pressbooks LTI] Checking Moodle session...
-   [Pressbooks LTI] Session expired, logging out...
-   ```
-
-**Troubleshooting Guide:** See `docs/SESSION_MONITOR_TESTING.md`
-
-### Step 3.8: Verify Audit Logs
+### Step 3.7: Verify Audit Logs
 
 Check that all LTI events are being logged:
 
@@ -893,11 +871,9 @@ wp db query "DELETE FROM wp_lti_keys WHERE kid = 'old-kid-here'" --allow-root
 - **Retroactive Sync Guide:** `docs/RETROACTIVE_GRADE_SYNC.md`
 
 ### Technical Documentation
-- **Testing Procedures:** `docs/TESTING_DEEP_LINKING_AND_AGS.md`
-- **Session Monitoring:** `docs/SESSION_MONITOR_TESTING.md`
-- **Developer Onboarding:** `docs/DEVELOPER_ONBOARDING.md`
+- **Test Checklist:** `docs/testing/PRESSBOOKS_MOODLE_TEST_CHECKLIST.md`
 - **Architecture Overview:** `ARCHITECTURE.md`
-- **Development Guide:** `CLAUDE.md`
+- **Development Guide:** `SETUP_GUIDE.md` (Part 3) / `CLAUDE.md`
 
 ### Compliance Documentation
 - **1EdTech Certification:** `docs/compliance/1EDTECH_CERTIFICATION_MAPPING.md`
@@ -956,20 +932,18 @@ wp db query "DELETE FROM wp_lti_keys WHERE kid = 'old-kid-here'" --allow-root
 
 ### C. Changelog
 
+**v2.2.0 (2026-02-19):**
+- Updated for v2.2.0 release
+- Removed Session Monitor (bidirectional logout) — feature removed from codebase
+- Updated documentation references
+
 **v2.1.0 (2026-02-15):**
 - Added comprehensive production deployment guide
-- Documented all 2026 features (bidirectional logout, grade routing, etc.)
-- Added detailed testing procedures
-- Included troubleshooting guides
-- Added success metrics and monitoring
-
-**v0.8.0 (Previous):**
-- Initial SOP created
-- Basic LTI 1.3 deployment steps
+- Added detailed testing procedures, success metrics and monitoring
 
 ---
 
-**Document Version:** 2.1.0
-**Last Updated:** February 15, 2026
-**Next Review Date:** May 15, 2026
+**Document Version:** 2.2.0
+**Last Updated:** February 19, 2026
+**Next Review Date:** May 19, 2026
 **Document Owner:** DevOps Team
