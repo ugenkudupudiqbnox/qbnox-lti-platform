@@ -96,16 +96,25 @@ function pb_lti_ajax_get_h5p_results() {
         return;
     }
 
-    if (!current_user_can('edit_post', $post_id) && !is_super_admin()) {
-        wp_send_json_error(['message' => 'Insufficient permissions']);
-        return;
-    }
+    $is_instructor = current_user_can('edit_post', $post_id) || is_super_admin();
+    $current_user_id = get_current_user_id();
 
     try {
         $results = \PB_LTI\Services\H5PResultsManager::get_chapter_results($post_id);
+        
+        // If not instructor, only return the current student's results
+        if (!$is_instructor) {
+            if (isset($results[$current_user_id])) {
+                $results = [$current_user_id => $results[$current_user_id]];
+            } else {
+                $results = []; // No results for this student yet
+            }
+        }
+
         wp_send_json_success([
             'results' => array_values($results),
-            'last_sync' => get_post_meta($post_id, '_lti_last_grade_sync', true) ?: 'Never'
+            'last_sync' => get_post_meta($post_id, '_lti_last_grade_sync', true) ?: 'Never',
+            'is_instructor' => $is_instructor
         ]);
     } catch (\Exception $e) {
         wp_send_json_error(['message' => 'Error fetching results: ' . $e->getMessage()]);

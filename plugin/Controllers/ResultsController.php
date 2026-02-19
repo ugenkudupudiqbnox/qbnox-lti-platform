@@ -40,17 +40,8 @@ class ResultsController {
 
         // Must be logged in via WP (which LaunchController handles)
         if (!is_user_logged_in()) {
-            // If they are not logged in, we might be hitting this before LaunchController 
-            // has established the session (e.g. if the redirect fails or session cookie is blocked)
             error_log('[PB-LTI] Viewer trigger failed: User not logged in. Cookie mismatch?');
             wp_die('You must be logged in to view results. Please ensure third-party cookies are enabled in your browser settings.');
-        }
-
-        // Must have instructor-level permissions (Administrator/Editor in child blog)
-        // Note: is_super_admin() is also allowed.
-        if (!current_user_can('edit_posts') && !is_super_admin()) {
-            error_log('[PB-LTI] Permission denied for viewer: user ' . get_current_user_id() . ' on blog ' . get_current_blog_id());
-            wp_die('You do not have permission to view this results page. Instructors and Administrators only.');
         }
 
         error_log('[PB-LTI] Rendering results page for blog ' . get_current_blog_id() . ' for user ' . get_current_user_id());
@@ -190,7 +181,7 @@ class ResultsController {
 
             <script>
             jQuery(document).ready(function($) {
-                let allResults = [], page = 1, limit = 10, search = '', selectedActivityId = null;
+                let allResults = [], page = 1, limit = 10, search = '', selectedActivityId = null, instructorMode = false;
 
                 $('#chapter-select').on('change', function() {
                     const postId = $(this).val();
@@ -215,6 +206,7 @@ class ResultsController {
                         $('#loading-indicator').hide();
                         if(r.success) {
                             allResults = r.data.results || [];
+                            instructorMode = r.data.is_instructor || false;
                             
                             // Populate Global Activity Selector
                             const activities = {};
@@ -232,8 +224,26 @@ class ResultsController {
                                 selectedActivityId = $gas.val();
                             }
 
-                            page = 1; render();
+                            page = 1; 
+                            render();
                             $('#results-data').fadeIn();
+
+                            // STUDENT AUTO-REDIRECTION:
+                            // If not an instructor, auto-show their specific detail view
+                            if (!instructorMode && allResults.length === 1) {
+                                $('#list-view').hide();
+                                const user = allResults[0];
+                                $('#detail-student-name').text('Your Progress: ' + user.display_name);
+                                $('#detail-content').html($('.details-store').first().html());
+                                $('#activity-selector-container').css('display', 'flex');
+                                if (selectedActivityId) {
+                                    $('#detail-content').find('.' + selectedActivityId).show();
+                                }
+                                $('#detail-view').fadeIn();
+                                $('.back-to-list').hide(); // Don't let students go back to empty list view
+                            } else {
+                                $('.back-to-list').show(); // Re-show for instructors
+                            }
                         } else {
                             $('#results-error').text(r.data.message || 'Error').show();
                             $('#results-data').hide();
@@ -259,9 +269,16 @@ class ResultsController {
                     if (page > total) page = total;
                     const data = filtered.slice((page-1)*limit, page*limit);
                     
-                    $('#page-info').text(`Page ${page} of ${total}`);
-                    $('.prev-page').prop('disabled', page === 1);
-                    $('.next-page').prop('disabled', page === total);
+                    if (instructorMode) {
+                        $('#search-input').closest('div').show();
+                        $('#page-info').text(`Page ${page} of ${total}`);
+                        $('.prev-page').prop('disabled', page === 1).show();
+                        $('.next-page').prop('disabled', page === total).show();
+                        $('#per-page').show();
+                    } else {
+                        $('#search-input').closest('div').hide();
+                        $('.prev-page, .next-page, #page-info, #per-page').hide();
+                    }
 
                     const $tbody = $('#results-table-body').empty();
                     if(data.length === 0) { $tbody.append('<tr><td colspan="5" style="text-align:center;">No students found.</td></tr>'); return; }
@@ -362,14 +379,41 @@ class ResultsController {
     }
 
     private static function get_grading_chapters($blog_id) {
-        switch_to_blog($blog_id);
-        $posts = get_posts(['post_type'=>['chapter','front-matter','back-matter'], 'posts_per_page'=>-1, 'meta_key'=>'_lti_h5p_grading_enabled', 'meta_value'=>'1']);
         $res = [];
-        foreach($posts as $p) {
-            $acts = H5PActivityDetector::find_h5p_activities($p->ID);
-            $res[] = ['id'=>$p->ID, 'title'=>$p->post_title, 'h5p_count'=>count($acts)];
+        $blog_list = [];
+        
+        if (is_multisite() && $blog_id == get_main_site_id()) {
+            // If on main site, scan across all sites where user has permissions or all sites if super admin
+            $blog_list = get_sites(['site_id' => get_current_network_id(), 'spam' => 0, 'deleted' => 0]);
+        } else {
+            $blog_list = [(object)['blog_id' => $blog_id]];
         }
-        restore_current_blog();
+
+        foreach ($blog_list as $blog) {
+            $bid = (int)$blog->blog_id;
+            switch_to_blog($bid);
+            
+            // Only search if user can manage this specific blog's contents
+            if (current_user_can('edit_posts') || is_super_admin()) {
+                $posts = get_posts([
+                    'post_type' => ['chapter', 'front-matter', 'back-matter'], 
+                    'posts_per_page' => -1, 
+                    'meta_key' => '_lti_h5p_grading_enabled', 
+                    'meta_value' => '1'
+                ]);
+                
+                foreach ($posts as $p) {
+                    $acts = H5PActivityDetector::find_h5p_activities($p->ID);
+                    $site_name = ($bid == $blog_id) ? '' : '[' . get_bloginfo('name') . '] ';
+                    $res[] = [
+                        'id' => $p->ID, 
+                        'title' => $site_name . $p->post_title, 
+                        'h5p_count' => count($acts)
+                    ];
+                }
+            }
+            restore_current_blog();
+        }
         return $res;
     }
 }

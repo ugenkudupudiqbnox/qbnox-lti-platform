@@ -310,7 +310,33 @@ class H5PResultsManager {
      */
     public static function get_chapter_results($post_id) {
         global $wpdb;
-        error_log("[PB-LTI] get_chapter_results for post $post_id. Prefix: " . $wpdb->prefix);
+        
+        // Find which blog this post belongs to
+        $blog_id = get_current_blog_id();
+        if (is_multisite()) {
+            // We can't use url_to_postid or similar reverse lookups reliably here
+            // But we know that chapters live across blogs. 
+            // If the current blog doesn't have this post, we need to find it.
+            $post = get_post($post_id);
+            if (!$post) {
+                // Post not in current blog - search across network blogs
+                $blog_ids = $wpdb->get_col("SELECT blog_id FROM {$wpdb->blogs} WHERE site_id = '{$wpdb->siteid}' AND spam = 0 AND deleted = 0");
+                foreach ($blog_ids as $bid) {
+                    switch_to_blog($bid);
+                    $post = get_post($post_id);
+                    if ($post) {
+                        $blog_id = $bid;
+                        // Don't restore yet, we need this blog's context for queries
+                        break;
+                    }
+                    restore_current_blog();
+                }
+            } else {
+                switch_to_blog($blog_id); // Re-switch to ensure consistency
+            }
+        }
+
+        error_log("[PB-LTI] get_chapter_results for post $post_id on blog $blog_id. Prefix: " . $wpdb->prefix);
 
         $config = self::get_configuration($post_id);
         $activities = self::get_configured_activities($post_id);
@@ -420,16 +446,10 @@ class H5PResultsManager {
             ), ARRAY_A);
         }
 
-        return $user_results;
-    }
+        if (is_multisite()) {
+            restore_current_blog();
+        }
 
-    /**
-     * Get H5P activity title
-     *
-     * @param int $h5p_id H5P content ID
-     * @return string
-     */
-    private static function get_h5p_title($h5p_id) {
         global $wpdb;
         $table = $wpdb->prefix . 'h5p_contents';
         return $wpdb->get_var($wpdb->prepare("SELECT title FROM {$table} WHERE id = %d", $h5p_id)) ?: "H5P #$h5p_id";
