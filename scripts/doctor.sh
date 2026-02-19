@@ -67,5 +67,19 @@ for container in moodle pressbooks mysql; do
     fi
 done
 
+# 6. Check H5P Write Access
+echo -e "\n📂 Checking H5P Data Directories..."
+for path in "/var/www/pressbooks/web/app/uploads/h5p" "/var/www/pressbooks/web/app/uploads/sites/2/h5p"; do
+    if sudo docker exec pressbooks [ -d "$path" ]; then
+        if sudo docker exec -u www-data pressbooks [ -w "$path" ]; then
+            echo "✅ $path exists and is writeable by www-data."
+        else
+            echo "❌ $path is NOT writeable by www-data (Current: $(sudo docker exec pressbooks stat -c '%U:%G %a' "$path"))."
+        fi
+    else
+        echo "⚠️  $path does not exist. Run 'make install-h5p' or 'bash scripts/fix-h5p-data.sh'."
+    fi
+done
+
 echo -e "\n=========================================="
 echo "🩺 Diagnostics Complete"

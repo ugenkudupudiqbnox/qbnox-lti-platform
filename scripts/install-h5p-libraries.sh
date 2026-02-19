@@ -28,4 +28,8 @@ echo "🔧 Running H5P library installer..."
 sudo $DC cp scripts/h5p-install-libraries.php pressbooks:/tmp/h5p-install-libraries.php
 sudo -E $DC exec -T pressbooks php /tmp/h5p-install-libraries.php
 
+# Fix permissions and ensure folders exist for all blogs
+echo "🔧 Fixing H5P directory permissions..."
+bash scripts/fix-h5p-data.sh
+
 echo "✅ H5P library installation complete"

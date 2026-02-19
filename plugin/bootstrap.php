@@ -23,6 +23,7 @@ require_once PB_LTI_PATH.'Services/H5PGradeSync.php';
 require_once PB_LTI_PATH.'Services/H5PActivityDetector.php';
 require_once PB_LTI_PATH.'Services/H5PResultsManager.php';
 require_once PB_LTI_PATH.'Services/H5PGradeSyncEnhanced.php';
+require_once PB_LTI_PATH.'Services/H5PMultisiteSetup.php';
 
 // Load all Controllers
 require_once PB_LTI_PATH.'Controllers/LoginController.php';
@@ -56,3 +57,6 @@ add_action('init', ['PB_LTI\Services\H5PGradeSyncEnhanced', 'init']);
 
 // Initialize cookie manager (ensures cookies work in LTI embedded contexts)
 add_action('init', ['PB_LTI\Services\CookieManager', 'init'], 1);
+
+// Initialize multisite H5P setup (ensures libraries exist for new books)
+add_action('wp_loaded', ['PB_LTI\Services\H5PMultisiteSetup', 'init']);
