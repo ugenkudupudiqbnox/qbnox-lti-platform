@@ -150,9 +150,13 @@ After saving the tool in Moodle, click the **Deployment icon** (the list icon) f
 
 **Via CLI (Recommended):**
 ```bash
-# Run this on your Pressbooks server
-php scripts/pressbooks-register-platform.php "https://your-moodle.com" "YOUR_CLIENT_ID" "YOUR_DEPLOYMENT_ID"
+# Run this on your Pressbooks server (the script must be able to include wp-load.php)
+# Edit the WP_LOAD path at the top of the script to match your installation, then:
+php /path/to/pressbooks-lti-platform/scripts/pressbooks-register-platform.php \
+  "https://your-moodle.com" "YOUR_CLIENT_ID" "YOUR_DEPLOYMENT_ID"
 ```
+
+> **Note:** The script contains a hardcoded path to `wp-load.php`. Before running, open `scripts/pressbooks-register-platform.php` and update line 3 to match your WordPress root, e.g.: `require_once('/var/www/html/wp-load.php');`
 
 For more detailed setup and troubleshooting, see the [User Guide](USER_GUIDE.md).
 

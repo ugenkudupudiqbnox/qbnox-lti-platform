@@ -211,17 +211,26 @@ Check:
 
 Debug checklist:
 ```bash
-# 1. Check LTI context exists
-wp user meta get <USER_ID> _lti_ags_lineitem
+# 1. Check lineitem is stored (per-chapter, per-user post meta on the BOOK blog, e.g. blog 2)
+wp db query "SELECT meta_key, meta_value FROM wp_2_postmeta WHERE meta_key LIKE '_lti_ags_lineitem_user_%'" --allow-root
+# If empty → student hasn't done a fresh LTI launch yet, OR tool config is missing ltiservice_gradesynchronization=2
 
-# 2. Check grading config
-wp db query "SELECT * FROM wp_lti_h5p_grading_config WHERE post_id = <CHAPTER_ID>"
+# 2. Check global LTI context for user
+wp user meta get <USER_ID> _lti_platform_issuer --allow-root
+# If empty → student never launched via LTI
 
-# 3. Check H5P results
-wp db query "SELECT * FROM wp_h5p_results WHERE user_id = <USER_ID> LIMIT 5"
+# 3. Check grading config
+wp db query "SELECT * FROM wp_2_lti_h5p_grading_config WHERE post_id = <CHAPTER_ID>" --allow-root
 
-# 4. Check sync log
-wp db query "SELECT * FROM wp_lti_h5p_grade_sync_log ORDER BY synced_at DESC LIMIT 10"
+# 4. Check H5P results
+wp db query "SELECT * FROM wp_2_h5p_results WHERE user_id = <USER_ID> LIMIT 5" --allow-root
+
+# 5. Check sync log
+wp db query "SELECT * FROM wp_lti_h5p_grade_sync_log ORDER BY synced_at DESC LIMIT 10" --allow-root
+
+# 6. Check Moodle has ltiservice_gradesynchronization=2
+# Run on Moodle DB: SELECT name,value FROM mdl_lti_types_config WHERE name='ltiservice_gradesynchronization';
+# If missing or 0 → re-run tool registration
 ```
 
 ### Performance Issues?

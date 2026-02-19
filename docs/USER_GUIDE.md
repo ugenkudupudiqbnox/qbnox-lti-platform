@@ -192,9 +192,25 @@ If you configured grade passback:
 
 ---
 
+## Step 4b: Enable H5P Grading on Pressbooks Chapters
+
+> **Required if you want H5P activity scores synced to Moodle's gradebook.**
+
+1. In Pressbooks, open the chapter editor for the chapter you added to Moodle
+2. In the right sidebar, find the **"📊 LMS Grade Reporting (LTI AGS)"** meta box
+3. Click **"Enable Grading for This Chapter"**
+4. Check each H5P activity to include in the grade
+5. Set a weight for each (e.g., 100% for a single quiz)
+6. Choose aggregation method (Weighted Sum or Weighted Average)
+7. Click **Save**
+
+Students who complete the H5P activity via LTI launch will have their grades automatically posted to Moodle.
+
+---
+
 ## Using Deep Linking (Content Selection)
 
-Deep Linking allows instructors to browse and select specific Pressbooks content.
+Deep Linking allows instructors to browse and select specific Pressbooks content. **For graded chapters, Deep Linking is required** — it creates the Moodle grade column automatically. Manually entering a URL will not create a grade column.
 
 ### Enable Deep Linking
 
@@ -202,13 +218,13 @@ Deep Linking allows instructors to browse and select specific Pressbooks content
 2. Check ☑ **Select content** (or **Content Selection**)
 3. Click **Select content** button
 4. Browse Pressbooks catalog
-5. Select book/chapter
+5. Select book/chapter — if H5P grading is enabled for that chapter, Moodle will automatically create a grade column
 6. Content is automatically configured
 
 ### Benefits
 - Browse available content before adding
 - Direct link to specific chapters
-- Easier for instructors
+- Grade column created automatically for chapters with H5P grading enabled
 - Better student experience
 
 ---
@@ -268,13 +284,14 @@ If grade passback is enabled:
 
 ### Problem: Grades not appearing in Moodle
 
-**Cause:** Grade passback not configured
+**Cause:** One or more configuration steps were skipped
 
-**Solutions:**
-1. Verify AGS is enabled in tool configuration
-2. Check "Accept grades" is checked in activity
-3. Verify Pressbooks has permission to post grades
-4. Review Pressbooks logs for grade posting errors
+**Solutions (check in order):**
+1. **Chapter must be added via Deep Linking** — manually entering a URL does NOT create a Moodle grade column. Delete the activity and re-add it using "Select content" (Deep Linking).
+2. **H5P grading must be enabled on the Pressbooks chapter** — open the chapter editor, find the "LMS Grade Reporting" meta box, and enable grading with the H5P activities selected.
+3. **Student must launch fresh from Moodle** — after grading is configured, the student must click the activity in Moodle again to store the grade column association. Completing H5P without a fresh LTI launch will not sync.
+4. Check "Accept grades from the tool" is set to `Delegate to teacher` in the Moodle tool config (Site administration level).
+5. Review Pressbooks debug log (`wp-content/debug.log`) for `[PB-LTI H5P Enhanced]` lines to see the sync result.
 
 ### Problem: Content not loading / blank page
 
