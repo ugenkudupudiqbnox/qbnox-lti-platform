@@ -5,10 +5,10 @@ set -euo pipefail
 source "$(dirname "$0")/load-env.sh"
 
 COMPOSE_FILE="lti-local-lab/docker-compose.yml"
-if command -v docker-compose >/dev/null 2>&1; then
-  DC="sudo docker-compose -f $COMPOSE_FILE"
-else
+if docker compose version >/dev/null 2>&1; then
   DC="sudo docker compose -f $COMPOSE_FILE"
+elif command -v docker-compose >/dev/null 2>&1; then
+  DC="sudo docker-compose -f $COMPOSE_FILE"
 fi
 
 echo "🔧 Ensuring H5P data folders exist and have correct permissions..."
