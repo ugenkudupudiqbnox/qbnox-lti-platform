@@ -15,7 +15,7 @@
 ![Moodle](https://img.shields.io/badge/Tested%20with-Moodle-success)
 
 > **⚠️ Important Notice**
-> This is an **independent, community-developed plugin** created by [Qbnox Systems](https://www.qbnoxsystems.com) and is **not affiliated with, endorsed by, or officially supported by Pressbooks**. While this plugin integrates with Pressbooks software, it is developed and maintained independently. For official Pressbooks support and services, please visit [pressbooks.com](https://pressbooks.com).
+> This is an **independent, community-developed plugin** created by [Qbnox Systems](https://www.qbnoxsystems.com) and is **not affiliated with, endorsed by, or officially supported by Pressbooks**. While this plugin integrates with Pressbooks software, it is developed and maintained independently. For official Pressbooks support and services, please visit [pressbooks.com](https://pressbooks.com). We also offer managed Pressbooks hosting and implementation services. Choosing our managed hosting helps support the continued development and open-source maintenance of this plugin.
 
 An **open, production‑grade LTI 1.3 + LTI Advantage platform** for Pressbooks,
 built for **universities, OER initiatives, and public institutions**.
